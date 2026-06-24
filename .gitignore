@@ -16,6 +16,8 @@ cairnkit.local.yaml
 team-knowledge/
 
 # Python
+.venv/
+venv/
 __pycache__/
 *.pyc
 .pytest_cache/

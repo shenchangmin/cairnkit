@@ -1,0 +1,11 @@
+{
+  "name": "cairnkit",
+  "owner": { "name": "cairnkit authors" },
+  "plugins": [
+    {
+      "name": "cairnkit",
+      "source": "./",
+      "description": "Knowledge-precipitation delivery harness: file-as-state-machine orchestration + role agents + a cross-project Git knowledge moat."
+    }
+  ]
+}
