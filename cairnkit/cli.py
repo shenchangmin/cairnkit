@@ -18,6 +18,7 @@ from typing import Mapping
 from cairnkit import state as sm
 from cairnkit.config import State, init_state, load_config, load_state
 from cairnkit import gate
+from cairnkit.intent import classify as intent_classify
 from cairnkit.errors import CairnkitError, UsageError
 from cairnkit.knowledge.index import build_index
 from cairnkit.knowledge.model import load_entry
@@ -34,6 +35,7 @@ def _state_dict(state: State) -> dict:
         "artifacts": dict(state.artifacts),
         "retries": dict(state.retries),
         "pending_clarify": state.pending_clarify,
+        "blocked_reason": state.blocked_reason,
         "updated_at": state.updated_at,
     }
 
@@ -95,6 +97,31 @@ def _cmd_state_set_stage(args: argparse.Namespace) -> int:
 def _cmd_state_approve_clarify(args: argparse.Namespace) -> int:
     config = load_config(args.root)
     _emit(_state_dict(sm.approve_clarify(config.state_path)))
+    return 0
+
+
+def _cmd_state_set_path_mode(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(_state_dict(sm.set_path_mode(config.state_path, args.mode)))
+    return 0
+
+
+def _cmd_state_fail(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(_state_dict(sm.record_failure(config.state_path, args.stage)))
+    return 0
+
+
+def _cmd_state_unblock(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(_state_dict(sm.unblock(config.state_path)))
+    return 0
+
+
+def _cmd_intent_classify(args: argparse.Namespace) -> int:
+    text = Path(args.input).read_text(encoding="utf-8") if args.input else (args.text or "")
+    res = intent_classify(text)
+    _emit({"path_mode": res.path_mode, "reason": res.reason})
     return 0
 
 
@@ -163,10 +190,26 @@ def build_parser() -> argparse.ArgumentParser:
     state_sub.add_parser("resume", help="state to continue from").set_defaults(func=_cmd_state_resume)
     state_sub.add_parser("advance", help="advance to the next stage").set_defaults(func=_cmd_state_advance)
     state_sub.add_parser("approve-clarify", help="clear a CLARIFY pause").set_defaults(func=_cmd_state_approve_clarify)
+    state_sub.add_parser("unblock", help="clear a blocked run, reset retries").set_defaults(func=_cmd_state_unblock)
 
     p = state_sub.add_parser("set-stage", help="force a stage (repair)")
     p.add_argument("stage")
     p.set_defaults(func=_cmd_state_set_stage)
+
+    p = state_sub.add_parser("set-path-mode", help="record IntentGate routing")
+    p.add_argument("mode")
+    p.set_defaults(func=_cmd_state_set_path_mode)
+
+    p = state_sub.add_parser("fail", help="record a verify-stage failure (retry/block)")
+    p.add_argument("--stage", required=True)
+    p.set_defaults(func=_cmd_state_fail)
+
+    intent_p = sub.add_parser("intent", help="IntentGate routing")
+    intent_sub = intent_p.add_subparsers(dest="cmd", required=True)
+    p = intent_sub.add_parser("classify", help="suggest a path mode for a request")
+    p.add_argument("--input", default=None, help="file with the request text")
+    p.add_argument("--text", default=None, help="inline request text")
+    p.set_defaults(func=_cmd_intent_classify)
 
     kb_p = sub.add_parser("kb", help="knowledge base")
     kb_sub = kb_p.add_subparsers(dest="cmd", required=True)

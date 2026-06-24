@@ -22,15 +22,18 @@ from ruamel.yaml.error import YAMLError
 from ruamel.yaml.representer import RoundTripRepresenter
 
 from cairnkit.errors import ConfigError, StateCorruptError
+from cairnkit.stages import FULL_SEQUENCE, PATH_MODES
 
-# The valid stages (the enum). Transition logic (NEXT) lives in state.py.
-STAGES = ("INIT", "ANALYSE_PRODUCT", "CLARIFY_PRODUCT", "ARCHITECT_BACKEND", "DONE")
+# The valid stages (the enum); transition logic lives in stages.py / state.py.
+STAGES = FULL_SEQUENCE
 
 # Canonical STATE.yaml field order (kept stable for readable diffs).
+# blocked_reason is optional on load (older states omit it) — see load_state.
 _STATE_FIELDS = (
     "run_id", "stage", "path_mode", "history",
-    "artifacts", "retries", "pending_clarify", "updated_at",
+    "artifacts", "retries", "pending_clarify", "blocked_reason", "updated_at",
 )
+_REQUIRED_STATE_FIELDS = tuple(f for f in _STATE_FIELDS if f != "blocked_reason")
 
 _yaml = YAML()  # round-trip mode: preserves order
 _yaml.default_flow_style = False
@@ -80,6 +83,7 @@ class State:
     retries: Mapping[str, int]
     pending_clarify: str | None
     updated_at: str
+    blocked_reason: str | None = None
 
     def __post_init__(self) -> None:
         # Make the mappings genuinely read-only: frozen=True stops field rebinding
@@ -142,6 +146,7 @@ def init_state(config: Config, run_id: str) -> State:
         retries={},
         pending_clarify=None,
         updated_at=_now(),
+        blocked_reason=None,
     )
     save_state(config.state_path, state)
     return state
@@ -157,7 +162,7 @@ def load_state(state_path: Path) -> State:
         data = _yaml.load(state_path.read_text(encoding="utf-8")) or {}
     except YAMLError as exc:
         raise StateCorruptError(f"STATE.yaml is not valid YAML: {exc}") from exc
-    missing = [f for f in _STATE_FIELDS if f not in data]
+    missing = [f for f in _REQUIRED_STATE_FIELDS if f not in data]
     if missing:
         raise StateCorruptError(
             "STATE.yaml is missing required fields: "
@@ -169,6 +174,11 @@ def load_state(state_path: Path) -> State:
             f"STATE.yaml has an unknown stage {data['stage']!r}. "
             f"Valid stages: {', '.join(STAGES)}."
         )
+    if str(data["path_mode"]) not in PATH_MODES:
+        raise StateCorruptError(
+            f"STATE.yaml has an unknown path_mode {data['path_mode']!r}. "
+            f"Valid: {', '.join(PATH_MODES)}."
+        )
     return State(
         run_id=str(data["run_id"]),
         stage=str(data["stage"]),
@@ -178,6 +188,7 @@ def load_state(state_path: Path) -> State:
         retries=dict(data["retries"] or {}),
         pending_clarify=data["pending_clarify"],
         updated_at=str(data["updated_at"]),
+        blocked_reason=data.get("blocked_reason"),
     )
 
 
@@ -192,6 +203,7 @@ def save_state(state_path: Path, state: State) -> None:
         "artifacts": dict(state.artifacts),
         "retries": dict(state.retries),
         "pending_clarify": state.pending_clarify,
+        "blocked_reason": state.blocked_reason,
         "updated_at": _now(),  # Python owns the timestamp
     }
     tmp = state_path.with_suffix(state_path.suffix + ".tmp")
