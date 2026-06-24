@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
-from cairnkit.knowledge.model import Entry, load_entry
+from cairnkit.knowledge.model import Entry, KnowledgeError, load_entry
 
 CATALOG_A = "knowledge-catalog.md"
 CATALOG_B = "catalog.md"
@@ -29,7 +29,10 @@ def iter_entries(kb_root: Path) -> list[Entry]:
         for path in sorted(base.rglob("*.md")):
             if path.name == CATALOG_B:
                 continue
-            entries.append(load_entry(path))
+            try:
+                entries.append(load_entry(path))
+            except KnowledgeError:
+                continue  # a stray non-entry .md must not crash every scan
     return entries
 
 

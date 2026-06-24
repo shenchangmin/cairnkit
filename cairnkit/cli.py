@@ -28,6 +28,7 @@ from cairnkit.knowledge.extract_gate import extract_from_run
 from cairnkit.knowledge.refs import touch as kb_touch
 from cairnkit.knowledge import lifecycle
 from cairnkit.knowledge.lint import lint as kb_lint
+from cairnkit.knowledge import kbrepo
 
 
 def _state_dict(state: State) -> dict:
@@ -195,6 +196,51 @@ def _cmd_lint(args: argparse.Namespace) -> int:
     return 0
 
 
+def _kbrepo_path(config) -> Path:
+    repo = config.knowledge_repo_local
+    if repo is None:
+        raise UsageError(
+            "no knowledge_repo.local configured in cairnkit.yaml — set it to a local clone "
+            "of the shared knowledge repo."
+        )
+    return repo
+
+
+def _cmd_kbrepo_pull(args: argparse.Namespace) -> int:
+    _emit(kbrepo.pull(_kbrepo_path(load_config(args.root))))
+    return 0
+
+
+def _cmd_kbrepo_push(args: argparse.Namespace) -> int:
+    _emit(kbrepo.push(_kbrepo_path(load_config(args.root)), args.message))
+    return 0
+
+
+def _cmd_kbrepo_promote(args: argparse.Namespace) -> int:
+    repo = _kbrepo_path(load_config(args.root))
+    dest = kbrepo.promote_entry(repo, args.id, args.to)
+    _emit({"promoted": args.id, "to": args.to, "path": str(dest.relative_to(repo))})
+    return 0
+
+
+def _cmd_kbrepo_stage_conflict(args: argparse.Namespace) -> int:
+    repo = _kbrepo_path(load_config(args.root))
+    body = Path(args.file).read_text(encoding="utf-8")
+    path = kbrepo.stage_conflict(repo, args.id, body)
+    _emit({"staged": str(path.relative_to(repo))})
+    return 0
+
+
+def _cmd_knowledge_stats(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    repo = config.knowledge_repo_local or config.knowledge_root
+    result = dict(kbrepo.stats(repo))
+    if config.knowledge_repo_local is None:
+        result["warning"] = "no shared knowledge_repo configured — scanning local knowledge_root"
+    _emit(result)
+    return 0
+
+
 def _cmd_gate_check(args: argparse.Namespace) -> int:
     config = load_config(args.root)
     state = load_state(config.state_path)
@@ -280,6 +326,25 @@ def build_parser() -> argparse.ArgumentParser:
     lint_p = sub.add_parser("lint", help="knowledge base health check")
     lint_p.add_argument("--fix", action="store_true", help="apply mechanical fixes (index rebuild)")
     lint_p.set_defaults(func=_cmd_lint)
+
+    kr_p = sub.add_parser("kbrepo", help="shared knowledge Git repo")
+    kr_sub = kr_p.add_subparsers(dest="cmd", required=True)
+    kr_sub.add_parser("pull", help="pull the shared repo").set_defaults(func=_cmd_kbrepo_pull)
+    p = kr_sub.add_parser("push", help="commit + push")
+    p.add_argument("--message", required=True)
+    p.set_defaults(func=_cmd_kbrepo_push)
+    p = kr_sub.add_parser("promote", help="promote L3 entry to L1/L2")
+    p.add_argument("--id", required=True)
+    p.add_argument("--to", required=True, choices=("L1", "L2"))
+    p.set_defaults(func=_cmd_kbrepo_promote)
+    p = kr_sub.add_parser("stage-conflict", help="park a contradicting contribution")
+    p.add_argument("--id", required=True)
+    p.add_argument("--file", required=True)
+    p.set_defaults(func=_cmd_kbrepo_stage_conflict)
+
+    kn_p = sub.add_parser("knowledge", help="knowledge utilities")
+    kn_sub = kn_p.add_subparsers(dest="cmd", required=True)
+    kn_sub.add_parser("stats", help="health report (zero DB, offline)").set_defaults(func=_cmd_knowledge_stats)
 
     gate_p = sub.add_parser("gate", help="admission gate")
     gate_sub = gate_p.add_subparsers(dest="cmd", required=True)

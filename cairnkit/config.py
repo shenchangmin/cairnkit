@@ -64,6 +64,8 @@ class Config:
     repos: tuple[Repo, ...]
     root: Path
     knowledge_root: Path
+    knowledge_repo_url: str | None = None
+    knowledge_repo_local: Path | None = None
 
     @property
     def state_path(self) -> Path:
@@ -124,12 +126,16 @@ def load_config(root: Path) -> Config:
         repos = (Repo(name=str(data["project"]), path="."),)
     kr = data.get("knowledge_root")
     knowledge_root = (root / kr) if kr else (root / "docs" / "knowledge")
+    repo_cfg = data.get("knowledge_repo") or {}
+    repo_local = repo_cfg.get("local")
     return Config(
         project=str(data["project"]),
         domain=data.get("domain"),
         repos=repos,
         root=root,
         knowledge_root=knowledge_root,
+        knowledge_repo_url=repo_cfg.get("url"),
+        knowledge_repo_local=(Path(repo_local).expanduser() if repo_local else None),
     )
 
 
