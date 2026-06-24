@@ -29,3 +29,25 @@ def write_artifact(root: Path, run_id: str, name: str, body: str = "content") ->
     path = run_dir / name
     path.write_text(body, encoding="utf-8")
     return path
+
+
+def advance_to(config, target: str):
+    """Drive a run from its current stage to ``target`` (or terminal), writing each stage's
+    artifact and approving CLARIFY pauses along the way. Returns the state at ``target``."""
+    from cairnkit import stages
+    from cairnkit import state as sm
+
+    sp = config.state_path
+    for _ in range(100):  # guard against loops
+        st = sm.show(sp)
+        if st.stage == target:
+            return st
+        produced = stages.STAGE_ARTIFACT.get(st.stage)
+        if produced:
+            write_artifact(config.root, st.run_id, produced)
+        if st.pending_clarify is not None:
+            sm.approve_clarify(sp)
+        if stages.next_stage(st.stage, st.path_mode) is None:
+            return st  # terminal
+        sm.advance(sp, config)
+    raise AssertionError(f"did not reach {target}")

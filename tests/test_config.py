@@ -106,7 +106,7 @@ def test_save_state_preserves_field_order(project: Path) -> None:
     data = YAML().load(c.state_path.read_text(encoding="utf-8"))
     assert list(data.keys()) == [
         "run_id", "stage", "path_mode", "history",
-        "artifacts", "retries", "pending_clarify", "updated_at",
+        "artifacts", "retries", "pending_clarify", "blocked_reason", "updated_at",
     ]
 
 
@@ -128,6 +128,25 @@ def test_state_mappings_are_read_only(project: Path) -> None:
 
 def test_load_state_missing_file_raises_corrupt(project: Path) -> None:
     c = cfg.load_config(project)
+    with pytest.raises(StateCorruptError):
+        cfg.load_state(c.state_path)
+
+
+def test_load_state_without_blocked_reason_is_backward_compatible(project: Path) -> None:
+    # an older STATE.yaml omits blocked_reason -> loads with None, not corrupt
+    c = cfg.load_config(project)
+    cfg.init_state(c, "2026-06-24-demo")
+    text = c.state_path.read_text(encoding="utf-8")
+    text = "\n".join(ln for ln in text.splitlines() if not ln.startswith("blocked_reason"))
+    c.state_path.write_text(text + "\n", encoding="utf-8")
+    assert cfg.load_state(c.state_path).blocked_reason is None
+
+
+def test_load_state_unknown_path_mode_raises_corrupt(project: Path) -> None:
+    c = cfg.load_config(project)
+    cfg.init_state(c, "2026-06-24-demo")
+    text = c.state_path.read_text(encoding="utf-8").replace("path_mode: full", "path_mode: turbo")
+    c.state_path.write_text(text, encoding="utf-8")
     with pytest.raises(StateCorruptError):
         cfg.load_state(c.state_path)
 

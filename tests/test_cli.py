@@ -49,22 +49,22 @@ def test_state_advance_success_code_0(tmp_path: Path) -> None:
     _bootstrap_state(root)
     cp = run(root, "state", "advance")
     assert cp.returncode == 0
-    assert json.loads(cp.stdout)["stage"] == "ANALYSE_PRODUCT"
+    assert json.loads(cp.stdout)["stage"] == "INTENT_GATE"
 
 
 def test_state_advance_gate_refusal_code_3(tmp_path: Path) -> None:
     root = _init(tmp_path)
     _bootstrap_state(root)
-    run(root, "state", "advance")  # -> ANALYSE_PRODUCT
-    cp = run(root, "state", "advance")  # needs 01-product.md, missing
+    run(root, "state", "set-stage", "ANALYSE_PRODUCT")  # producing stage, no artifact
+    cp = run(root, "state", "advance")
     assert cp.returncode == 3
-    assert cp.stderr  # error reported to stderr
+    assert cp.stderr
 
 
 def test_gate_check_pass_and_fail_codes(tmp_path: Path) -> None:
     root = _init(tmp_path)
     _bootstrap_state(root)
-    run(root, "state", "advance")  # -> ANALYSE_PRODUCT
+    run(root, "state", "set-stage", "ANALYSE_PRODUCT")
     fail = run(root, "gate", "check", "--stage", "CLARIFY_PRODUCT")
     assert fail.returncode == 3
     assert json.loads(fail.stdout)["ok"] is False
@@ -77,7 +77,7 @@ def test_gate_check_pass_and_fail_codes(tmp_path: Path) -> None:
 def test_resume_reports_paused_flag(tmp_path: Path) -> None:
     root = _init(tmp_path)
     _bootstrap_state(root)
-    run(root, "state", "advance")
+    run(root, "state", "set-stage", "ANALYSE_PRODUCT")
     write_artifact(root, RUN, "01-product.md")
     run(root, "state", "advance")  # -> CLARIFY_PRODUCT
     cp = run(root, "state", "resume")

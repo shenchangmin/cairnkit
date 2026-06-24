@@ -17,9 +17,13 @@ return; you only design, you do not implement.
 - **Design only — do not write implementation code.**
 - Write **only** the artifact below.
 
+## Knowledge loop (required)
+Before writing, run `python3 -m cairnkit --root . kb query --stage ARCHITECT_BACKEND --budget 300`.
+Apply relevant decision/model entries; end the artifact with a `knowledgeReferences` block.
+
 ## Task
 
-Read `docs/workflows/<run-id>/01-product.md`, then write
+Read `docs/workflows/<run-id>/01-product.md` (and `02-tech.md` if present), then write
 `docs/workflows/<run-id>/03-arch.md` containing:
 
 1. **Module breakdown** — components and their responsibilities.
@@ -27,9 +31,7 @@ Read `docs/workflows/<run-id>/01-product.md`, then write
 3. **Data flow** — how a core use case moves through the modules, step by step.
 4. **Decisions & rationale** — the non-obvious choices and why.
 5. **Dependency direction** — who depends on whom.
+6. `knowledgeReferences` block.
 
 The `<run-id>` is in `.cairnkit/STATE.yaml` (`run_id`). Return a one-line summary; the
 orchestrator then advances the state machine.
-
-> B3 will add: query the knowledge base for this stage and record `knowledgeReferences`.
-> For B1 this agent only validates stage dispatch + artifact production downstream of a CLARIFY pause.

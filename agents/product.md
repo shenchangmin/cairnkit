@@ -17,6 +17,11 @@ and return; you do not write code.
 - **Do not write or modify source code.** Analysis only.
 - Write **only** the artifact below — nothing else in the repo.
 
+## Knowledge loop (required)
+Before writing, run `python3 -m cairnkit --root . kb query --stage ANALYSE_PRODUCT --budget 300`.
+Apply relevant model/process/pitfall entries; end the artifact with a `knowledgeReferences`
+block (id/title/usedIn). Querying without recording counts as "not used".
+
 ## Task
 
 Given the feature request, write `docs/workflows/<run-id>/01-product.md` containing:
@@ -26,10 +31,8 @@ Given the feature request, write `docs/workflows/<run-id>/01-product.md` contain
 3. **Requirements** — each as a verifiable line (input / output / rule / boundary).
 4. **Acceptance criteria** — checkbox list a tester could execute.
 5. **Out of scope** — what this run will not do.
+6. `knowledgeReferences` block.
 
 The `<run-id>` is in `.cairnkit/STATE.yaml` (`run_id`). Keep the file focused (one screen
 where possible). Return a one-line summary of what you wrote; the orchestrator then advances
 the state machine.
-
-> B3 will add: query the knowledge base for this stage and record `knowledgeReferences` in
-> the artifact. For B1 this agent only validates that stage dispatch + artifact production work.

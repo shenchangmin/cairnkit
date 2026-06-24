@@ -1,41 +1,24 @@
-"""Stage admission gate — the hard, Python-enforced precondition check.
+"""Stage admission gate — the hard, Python-enforced transition check (M2).
 
-``check(stage, ...)`` answers: *"are the preconditions to ENTER ``stage`` satisfied?"*
-A transition is refused (by ``state.advance``) unless the upstream artifact a stage
-depends on exists and is non-empty, and — for stages downstream of a CLARIFY pause —
-the async approval has been granted. This is the discipline that does not rely on
-model goodwill (CLAUDE.md §2).
+``check(next_stage, state, config)`` answers: *"may the run move from its current stage
+into ``next_stage``?"* It is path-mode agnostic: a transition is allowed only when
 
-B1 scope: the minimal stage set only. Retry/blocked logic (BUILD_VERIFY/E2E_VERIFY)
-is a placeholder added in B3.
+  - the run is not blocked (a retry cap was not exceeded),
+  - if the current stage is a CLARIFY pause, it has been approved, and
+  - the artifact the current stage was supposed to produce exists and is non-empty.
+
+This is the discipline that does not rely on model goodwill (CLAUDE.md §2).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from cairnkit import stages
 from cairnkit.config import Config, State
 
-# Artifact a stage *produces* (written by its role agent before advancing).
-STAGE_ARTIFACT = {
-    "ANALYSE_PRODUCT": "01-product.md",
-    "ARCHITECT_BACKEND": "03-arch.md",
-}
-
-# Upstream artifacts required to ENTER a given stage.
-ENTRY_ARTIFACTS: dict[str, tuple[str, ...]] = {
-    "CLARIFY_PRODUCT": ("01-product.md",),
-    "ARCHITECT_BACKEND": ("01-product.md",),
-    "DONE": ("03-arch.md",),
-}
-
-# Stages that may only be entered once the preceding CLARIFY pause is approved.
-CLARIFY_REQUIRED = {"ARCHITECT_BACKEND"}
-
-# Stages that require a predecessor stage to be completed (it produces no file artifact,
-# so completion is proven by history). Satisfied when the predecessor is in history OR is
-# the current stage being left (advance appends to history only after the gate passes).
-HISTORY_REQUIRED = {"ANALYSE_PRODUCT": "INIT"}
+# Re-exported for callers that referenced gate.STAGE_ARTIFACT historically.
+STAGE_ARTIFACT = stages.STAGE_ARTIFACT
 
 
 @dataclass(frozen=True)
@@ -46,43 +29,39 @@ class GateResult:
     message: str
 
 
-def check(stage: str, state: State, config: Config) -> GateResult:
-    """Validate the preconditions to enter ``stage`` (see module docstring)."""
-    if stage == "INIT":
+def check(next_stage: str, state: State, config: Config) -> GateResult:
+    """Validate the transition current → next_stage (see module docstring)."""
+    current = state.stage
+
+    if state.blocked_reason:
+        return GateResult(False, next_stage, (), f"run is blocked: {state.blocked_reason}")
+
+    # Entering the very first stage only requires the project to be initialised.
+    if current == "INIT" and next_stage == "INTENT_GATE":
         if (config.root / "cairnkit.yaml").exists():
-            return GateResult(True, stage, (), "ok")
+            return GateResult(True, next_stage, (), "ok")
         return GateResult(
-            False, stage, ("cairnkit.yaml",),
+            False, next_stage, ("cairnkit.yaml",),
             "cairnkit.yaml missing — run /team-init first.",
         )
 
-    # Predecessor stage must be completed (in history or the stage being left now).
-    prev = HISTORY_REQUIRED.get(stage)
-    if prev is not None and prev != state.stage and prev not in state.history:
+    # Leaving a CLARIFY pause requires approval.
+    if stages.is_clarify(current) and state.pending_clarify is not None:
         return GateResult(
-            False, stage, (),
-            f"Cannot enter {stage}: predecessor stage {prev} not completed.",
-        )
-
-    # CLARIFY approval must be granted before entering a clarify-gated stage.
-    if stage in CLARIFY_REQUIRED and state.pending_clarify is not None:
-        return GateResult(
-            False, stage, (),
+            False, next_stage, (),
             f"CLARIFY not yet approved (pending: {state.pending_clarify}). "
             "Approve with `cairnkit state approve-clarify`.",
         )
 
-    run_dir = config.run_dir(state.run_id)
-    missing: list[str] = []
-    for fname in ENTRY_ARTIFACTS.get(stage, ()):
-        path = run_dir / fname
+    # The current stage's produced artifact must exist and be non-empty.
+    produced = stages.STAGE_ARTIFACT.get(current)
+    if produced:
+        path = config.run_dir(state.run_id) / produced
         if not path.exists() or path.stat().st_size == 0:
-            missing.append(str(path.relative_to(config.root)))
+            rel = str(path.relative_to(config.root))
+            return GateResult(
+                False, next_stage, (rel,),
+                f"Cannot leave {current}: its artifact is missing/empty: {rel}",
+            )
 
-    if missing:
-        return GateResult(
-            False, stage, tuple(missing),
-            f"Cannot enter {stage}: missing/empty upstream artifact(s): "
-            + ", ".join(missing),
-        )
-    return GateResult(True, stage, (), "ok")
+    return GateResult(True, next_stage, (), "ok")
