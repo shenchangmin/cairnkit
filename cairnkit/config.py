@@ -60,6 +60,7 @@ class Config:
     domain: str | None
     repos: tuple[Repo, ...]
     root: Path
+    knowledge_root: Path
 
     @property
     def state_path(self) -> Path:
@@ -117,11 +118,14 @@ def load_config(root: Path) -> Config:
         ) from exc
     if not repos:  # single-repo default
         repos = (Repo(name=str(data["project"]), path="."),)
+    kr = data.get("knowledge_root")
+    knowledge_root = (root / kr) if kr else (root / "docs" / "knowledge")
     return Config(
         project=str(data["project"]),
         domain=data.get("domain"),
         repos=repos,
         root=root,
+        knowledge_root=knowledge_root,
     )
 
 
