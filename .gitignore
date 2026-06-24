@@ -1,0 +1,31 @@
+# Reference repos (research only, never published)
+_research/
+
+# Private development docs (Chinese, never published)
+_dev/
+
+# Secrets / local config — NEVER commit
+.env
+.env.*
+*.local.yaml
+cairnkit.local.yaml
+
+# Local knowledge cache (private)
+.cairnkit/
+*-knowledge/
+team-knowledge/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
