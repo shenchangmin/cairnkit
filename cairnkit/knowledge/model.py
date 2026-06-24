@@ -7,8 +7,9 @@ free-text body. Files are the single source of truth; this module just parses/se
 from __future__ import annotations
 
 import io
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any
 
 from ruamel.yaml import YAML
 
@@ -50,6 +51,10 @@ class Entry:
     history: tuple[dict, ...]
     body: str
     path: Path | None = field(default=None, compare=False)
+
+    def with_(self, **changes: Any) -> "Entry":
+        """Return a new Entry with the given fields changed (immutability)."""
+        return replace(self, **changes)
 
 
 def _split_frontmatter(text: str) -> tuple[str, str]:

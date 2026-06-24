@@ -24,6 +24,10 @@ from cairnkit.knowledge.index import build_index
 from cairnkit.knowledge.model import load_entry
 from cairnkit.knowledge.query import query as kb_query
 from cairnkit.knowledge.schema import validate as kb_validate
+from cairnkit.knowledge.extract_gate import extract_from_run
+from cairnkit.knowledge.refs import touch as kb_touch
+from cairnkit.knowledge import lifecycle
+from cairnkit.knowledge.lint import lint as kb_lint
 
 
 def _state_dict(state: State) -> dict:
@@ -152,6 +156,45 @@ def _cmd_kb_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_kb_extract(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(extract_from_run(Path(args.from_dir), config.knowledge_root))
+    return 0
+
+
+def _cmd_kb_touch(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(kb_touch(config.knowledge_root, Path(args.from_dir), config.project))
+    return 0
+
+
+def _cmd_lifecycle_promote(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit({"promoted": lifecycle.promote_repo(config.knowledge_root)})
+    return 0
+
+
+def _cmd_lifecycle_decay(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit({"decayed": lifecycle.decay_repo(config.knowledge_root)})
+    return 0
+
+
+def _cmd_lint(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    report = kb_lint(config.knowledge_root, fix=args.fix)
+    _emit({
+        "clean": report.clean,
+        "orphans": list(report.orphans),
+        "stale": list(report.stale),
+        "duplicates": [list(g) for g in report.duplicates],
+        "invalid": list(report.invalid),
+        "conflicts": [list(g) for g in report.conflicts],
+        "fixed": list(report.fixed),
+    })
+    return 0
+
+
 def _cmd_gate_check(args: argparse.Namespace) -> int:
     config = load_config(args.root)
     state = load_state(config.state_path)
@@ -222,6 +265,21 @@ def build_parser() -> argparse.ArgumentParser:
     p = kb_sub.add_parser("validate", help="schema-validate an entry file")
     p.add_argument("file")
     p.set_defaults(func=_cmd_kb_validate)
+    p = kb_sub.add_parser("extract", help="strict-gate extract drafts from a run")
+    p.add_argument("--from", dest="from_dir", required=True)
+    p.set_defaults(func=_cmd_kb_extract)
+    p = kb_sub.add_parser("touch", help="write back knowledgeReferences from a run")
+    p.add_argument("--from", dest="from_dir", required=True)
+    p.set_defaults(func=_cmd_kb_touch)
+
+    life_p = sub.add_parser("lifecycle", help="maturity lifecycle")
+    life_sub = life_p.add_subparsers(dest="cmd", required=True)
+    life_sub.add_parser("promote", help="promote eligible entries").set_defaults(func=_cmd_lifecycle_promote)
+    life_sub.add_parser("decay", help="decay stale entries").set_defaults(func=_cmd_lifecycle_decay)
+
+    lint_p = sub.add_parser("lint", help="knowledge base health check")
+    lint_p.add_argument("--fix", action="store_true", help="apply mechanical fixes (index rebuild)")
+    lint_p.set_defaults(func=_cmd_lint)
 
     gate_p = sub.add_parser("gate", help="admission gate")
     gate_sub = gate_p.add_subparsers(dest="cmd", required=True)
