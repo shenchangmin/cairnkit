@@ -29,6 +29,8 @@ from cairnkit.knowledge.refs import touch as kb_touch
 from cairnkit.knowledge import lifecycle
 from cairnkit.knowledge.lint import lint as kb_lint
 from cairnkit.knowledge import kbrepo
+from cairnkit import notify as notifier
+from cairnkit import import_state as importer
 
 
 def _state_dict(state: State) -> dict:
@@ -241,6 +243,31 @@ def _cmd_knowledge_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_notify(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(notifier.notify(args.event, config, detail=args.detail or "", channel=args.channel))
+    return 0
+
+
+def _cmd_import_init(args: argparse.Namespace) -> int:
+    _emit(_import_dict(importer.init_import(load_config(args.root).root)))
+    return 0
+
+
+def _cmd_import_show(args: argparse.Namespace) -> int:
+    _emit(_import_dict(importer.load_import(load_config(args.root).root)))
+    return 0
+
+
+def _cmd_import_advance(args: argparse.Namespace) -> int:
+    _emit(_import_dict(importer.advance_import(load_config(args.root).root)))
+    return 0
+
+
+def _import_dict(s) -> dict:
+    return {"step": s.step, "done": list(s.done), "updated_at": s.updated_at}
+
+
 def _cmd_gate_check(args: argparse.Namespace) -> int:
     config = load_config(args.root)
     state = load_state(config.state_path)
@@ -345,6 +372,18 @@ def build_parser() -> argparse.ArgumentParser:
     kn_p = sub.add_parser("knowledge", help="knowledge utilities")
     kn_sub = kn_p.add_subparsers(dest="cmd", required=True)
     kn_sub.add_parser("stats", help="health report (zero DB, offline)").set_defaults(func=_cmd_knowledge_stats)
+
+    n_p = sub.add_parser("notify", help="send a key-moment notification")
+    n_p.add_argument("--event", required=True)
+    n_p.add_argument("--detail", default=None)
+    n_p.add_argument("--channel", default="feishu")
+    n_p.set_defaults(func=_cmd_notify)
+
+    imp_p = sub.add_parser("import", help="cold-start import progress")
+    imp_sub = imp_p.add_subparsers(dest="cmd", required=True)
+    imp_sub.add_parser("init", help="start a resumable import").set_defaults(func=_cmd_import_init)
+    imp_sub.add_parser("show", help="show import progress").set_defaults(func=_cmd_import_show)
+    imp_sub.add_parser("advance", help="advance the import pipeline").set_defaults(func=_cmd_import_advance)
 
     gate_p = sub.add_parser("gate", help="admission gate")
     gate_sub = gate_p.add_subparsers(dest="cmd", required=True)

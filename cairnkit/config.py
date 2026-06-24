@@ -66,6 +66,7 @@ class Config:
     knowledge_root: Path
     knowledge_repo_url: str | None = None
     knowledge_repo_local: Path | None = None
+    notify_webhook_env: str | None = None
 
     @property
     def state_path(self) -> Path:
@@ -128,6 +129,7 @@ def load_config(root: Path) -> Config:
     knowledge_root = (root / kr) if kr else (root / "docs" / "knowledge")
     repo_cfg = data.get("knowledge_repo") or {}
     repo_local = repo_cfg.get("local")
+    notify_cfg = data.get("notify") or {}
     return Config(
         project=str(data["project"]),
         domain=data.get("domain"),
@@ -136,6 +138,7 @@ def load_config(root: Path) -> Config:
         knowledge_root=knowledge_root,
         knowledge_repo_url=repo_cfg.get("url"),
         knowledge_repo_local=(Path(repo_local).expanduser() if repo_local else None),
+        notify_webhook_env=notify_cfg.get("feishu_webhook_env"),
     )
 
 
