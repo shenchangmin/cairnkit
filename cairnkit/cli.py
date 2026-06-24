@@ -19,6 +19,10 @@ from cairnkit import state as sm
 from cairnkit.config import State, init_state, load_config, load_state
 from cairnkit import gate
 from cairnkit.errors import CairnkitError, UsageError
+from cairnkit.knowledge.index import build_index
+from cairnkit.knowledge.model import load_entry
+from cairnkit.knowledge.query import query as kb_query
+from cairnkit.knowledge.schema import validate as kb_validate
 
 
 def _state_dict(state: State) -> dict:
@@ -94,6 +98,33 @@ def _cmd_state_approve_clarify(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_kb_build_index(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit(build_index(config.knowledge_root))
+    return 0
+
+
+def _cmd_kb_query(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    domain = args.domain if args.domain is not None else config.domain
+    res = kb_query(config.knowledge_root, args.stage, args.budget, domain)
+    _emit({
+        "stage": res.stage,
+        "budget_lines": res.budget_lines,
+        "lines": res.lines,
+        "injected_ids": list(res.injected_ids),
+        "dropped": list(res.dropped),
+        "text": res.text,
+    })
+    return 0
+
+
+def _cmd_kb_validate(args: argparse.Namespace) -> int:
+    kb_validate(load_entry(Path(args.file)))
+    _emit({"ok": True, "file": args.file})
+    return 0
+
+
 def _cmd_gate_check(args: argparse.Namespace) -> int:
     config = load_config(args.root)
     state = load_state(config.state_path)
@@ -137,6 +168,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("stage")
     p.set_defaults(func=_cmd_state_set_stage)
 
+    kb_p = sub.add_parser("kb", help="knowledge base")
+    kb_sub = kb_p.add_subparsers(dest="cmd", required=True)
+    kb_sub.add_parser("build-index", help="(re)generate the 3-level index").set_defaults(func=_cmd_kb_build_index)
+    p = kb_sub.add_parser("query", help="budget-bounded knowledge injection for a stage")
+    p.add_argument("--stage", required=True)
+    p.add_argument("--budget", type=int, default=300)
+    p.add_argument("--domain", default=None)
+    p.set_defaults(func=_cmd_kb_query)
+    p = kb_sub.add_parser("validate", help="schema-validate an entry file")
+    p.add_argument("file")
+    p.set_defaults(func=_cmd_kb_validate)
+
     gate_p = sub.add_parser("gate", help="admission gate")
     gate_sub = gate_p.add_subparsers(dest="cmd", required=True)
     p = gate_sub.add_parser("check", help="check entry preconditions for a stage")
@@ -154,3 +197,6 @@ def main(argv: list[str] | None = None) -> int:
     except CairnkitError as exc:
         print(json.dumps({"error": str(exc), "code": exc.code}), file=sys.stderr)
         return exc.code
+    except OSError as exc:  # filesystem issues (e.g. missing knowledge_root) -> usage code
+        print(json.dumps({"error": str(exc), "code": 2}), file=sys.stderr)
+        return 2
