@@ -31,6 +31,7 @@ from cairnkit.knowledge.lint import lint as kb_lint
 from cairnkit.knowledge import kbrepo
 from cairnkit import notify as notifier
 from cairnkit import import_state as importer
+from cairnkit import evolve as evolver
 
 
 def _state_dict(state: State) -> dict:
@@ -268,6 +269,27 @@ def _import_dict(s) -> dict:
     return {"step": s.step, "done": list(s.done), "updated_at": s.updated_at}
 
 
+def _cmd_evolve_propose(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    content = Path(args.file).read_text(encoding="utf-8") if args.file else (args.content or "")
+    path = evolver.propose(config.root, args.id, content)
+    _emit({"proposed": args.id, "path": str(path.relative_to(config.root))})
+    return 0
+
+
+def _cmd_evolve_list(args: argparse.Namespace) -> int:
+    config = load_config(args.root)
+    _emit({"state": args.state, "proposals": evolver.list_proposals(config.root, args.state)})
+    return 0
+
+
+def _cmd_evolve_transition(args: argparse.Namespace, to_state: str) -> int:
+    config = load_config(args.root)
+    path = evolver.transition(config.root, args.id, to_state)
+    _emit({args.id: to_state, "path": str(path.relative_to(config.root))})
+    return 0
+
+
 def _cmd_gate_check(args: argparse.Namespace) -> int:
     config = load_config(args.root)
     state = load_state(config.state_path)
@@ -384,6 +406,22 @@ def build_parser() -> argparse.ArgumentParser:
     imp_sub.add_parser("init", help="start a resumable import").set_defaults(func=_cmd_import_init)
     imp_sub.add_parser("show", help="show import progress").set_defaults(func=_cmd_import_show)
     imp_sub.add_parser("advance", help="advance the import pipeline").set_defaults(func=_cmd_import_advance)
+
+    ev_p = sub.add_parser("evolve", help="self-evolution proposals (never auto-applied)")
+    ev_sub = ev_p.add_subparsers(dest="cmd", required=True)
+    p = ev_sub.add_parser("propose", help="record an improvement proposal (pending)")
+    p.add_argument("--id", required=True)
+    p.add_argument("--file", default=None)
+    p.add_argument("--content", default=None)
+    p.set_defaults(func=_cmd_evolve_propose)
+    p = ev_sub.add_parser("list", help="list proposals in a state")
+    p.add_argument("--state", default="pending", choices=evolver.STATES)
+    p.set_defaults(func=_cmd_evolve_list)
+    for _state in ("apply", "reject", "defer"):
+        _to = {"apply": "applied", "reject": "rejected", "defer": "deferred"}[_state]
+        p = ev_sub.add_parser(_state, help=f"move a pending proposal to {_to} (human decision)")
+        p.add_argument("--id", required=True)
+        p.set_defaults(func=lambda a, _t=_to: _cmd_evolve_transition(a, _t))
 
     gate_p = sub.add_parser("gate", help="admission gate")
     gate_sub = gate_p.add_subparsers(dest="cmd", required=True)
