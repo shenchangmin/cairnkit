@@ -67,8 +67,19 @@ knowledge, not the harness.
 
 ## Status
 
-🚧 **Design phase.** The orchestration model and the knowledge layer are being built in
-staged batches; the first batch validates the orchestration model on Claude Code.
+🟢 **v1 engine implemented.** All staged batches are complete and merged:
+
+- **Orchestration (M2/M3)** — 16-stage file-as-state-machine with IntentGate routing
+  (full/lite/single), CLARIFY async pauses, verify-stage retry/block, and 8 role agents.
+- **Knowledge moat (M4–M7)** — entry model + schema, 3-level progressive index + budget
+  query, maturity lifecycle (promote/decay/lint + reference closed loop), and a cross-project
+  Git knowledge repo (pull/push, L3→L1/L2 promotion, hybrid contribution, conflict staging).
+- **Feeding & reach (M8/M10)** — cold-start `/flow-import` pipeline and pluggable notifications.
+- **Self-evolution (M9)** — `/evolve` with a *structural* never-auto-apply guarantee.
+
+The deterministic Python core (`cairnkit/`) is fully test-covered (pytest, ~94%) and runs
+independently of Claude Code. Remaining: live in-Claude-Code validation of the orchestrator
+dispatching role sub-agents end-to-end.
 
 ## License & credits
 
