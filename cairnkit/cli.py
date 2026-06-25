@@ -147,6 +147,7 @@ def _cmd_kb_query(args: argparse.Namespace) -> int:
         "stage": res.stage,
         "budget_lines": res.budget_lines,
         "lines": res.lines,
+        "over_budget": res.over_budget,
         "injected_ids": list(res.injected_ids),
         "dropped": list(res.dropped),
         "text": res.text,

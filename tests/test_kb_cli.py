@@ -37,6 +37,7 @@ def test_kb_query_uses_config_domain(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert main(["--root", str(root), "kb", "query", "--stage", "ANALYSE_PRODUCT", "--budget", "500"]) == 0
     data = json.loads(capsys.readouterr().out)
     assert "BK-001" in data["injected_ids"]
+    assert "over_budget" in data  # the never-silent budget flag is exposed at the CLI
 
 
 def test_kb_validate_ok_and_fail(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
