@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Demo: drive a full cairnkit workflow INIT -> DONE through the CLI, in a throwaway project.
 # Usage:  ./scripts/demo-run.sh [full|lite|single]
-# Uses the installed `cairn` console script — no python3 command-name dependency.
+# Uses the installed `cairn` binary (cargo install --path .). Override with CAIRN=/path/to/cairn.
 set -euo pipefail
 
 MODE="${1:-lite}"

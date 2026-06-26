@@ -24,14 +24,14 @@ If a change does not serve the knowledge loop, question whether it belongs in v1
 ## 2. The four-layer architecture
 
 Work is split by certainty: **fuzzy work → Markdown (model-driven); mechanical,
-verifiable work → Python (deterministic, testable).**
+verifiable work → the `cairn` binary (Rust, deterministic, testable).**
 
 ```
 ┌─ Markdown layer (skills / agents / commands) ─ model-driven "fuzzy" work ─┐
 │  analysis / design / implementation prompts · role personas               │
 └────────────────────────────────────────────────────────────────────────-─┘
-        │ calls via Bash on each stage transition ↓     ↑ returns structured result
-┌─ Python layer (the `cairnkit` package / CLI) ─ deterministic "mechanical" work ┐
+        │ calls `cairn` via Bash on each stage transition ↓  ↑ returns structured JSON
+┌─ Rust layer (the `cairn` binary / CLI) ─ deterministic "mechanical" work ──────┐
 │  state-machine transitions · stage admission gates · index building            │
 │  query-budget enforcement · frontmatter schema validation · maturity/decay     │
 │  Lint · promotion judging · Git pull/push/conflict staging · notification       │
@@ -50,11 +50,11 @@ verifiable work → Python (deterministic, testable).**
 
 - **The file system is the state machine.** All state, artifacts, and knowledge
   are human-readable Markdown + YAML. No database, no resident service, no central server.
-- **Only Python mutates state.** The model never holds workflow state in its head.
-  Re-running `/flow-run` = Python reads `STATE.yaml` and resumes. Crash-resume is automatic.
-- **Stage gates are hard-enforced in Python (`gate.py`), not model goodwill.**
+- **Only the cairn binary mutates state.** The model never holds workflow state in its head.
+  Re-running `/flow-run` = the cairn binary reads `STATE.yaml` and resumes. Crash-resume is automatic.
+- **Stage gates are hard-enforced in Rust (`gate.rs`), not model goodwill.**
   Missing/invalid upstream artifacts → transition refused.
-- **Context firewall.** Role agents interact only through files / Python — never directly
+- **Context firewall.** Role agents interact only through files / the cairn CLI — never directly
   with each other. A sub-agent failure must not pollute the main context.
 - **`/evolve` never auto-applies.** Self-modification always passes through
   pending → human approval → applied, Git-versioned.
@@ -76,20 +76,19 @@ cairnkit/                         ← this repo · the engine · MIT · public
 ├── rules/                        ← M10: context firewall / degradation / budgets / red lines
 ├── hooks/
 │   ├── hooks.json
-│   └── scripts/                  ← notification, ref capture, lint reminder (thin shell → python)
-├── cairnkit/                     ← Python package (M4–M7, M10) — deterministic, testable
-│   ├── cli.py                    ← `python -m cairnkit <cmd>`
-│   ├── state.py                  ← state transitions / checkpoints
-│   ├── gate.py                   ← stage admission gate
-│   ├── knowledge/
-│   │   ├── model.py  schema.py  index.py  query.py
-│   │   ├── lifecycle.py          ← maturity / decay / promotion judging
-│   │   ├── lint.py
-│   │   └── extract_gate.py       ← strict extraction gate
-│   ├── kbrepo.py                 ← independent Git knowledge repo: pull/push/stage/conflict
-│   └── notify.py                 ← webhook notification (pluggable channels)
-├── tests/                        ← pytest (Python layer, 80%+ coverage)
-└── README.md  LICENSE  NOTICE.md  CONTRIBUTING.md
+│   └── scripts/                  ← notification, ref capture, lint reminder (thin shell)
+├── Cargo.toml                    ← the `cairn` binary (Rust, zero runtime deps)
+├── src/                          ← Rust deterministic core (M2–M10)
+│   ├── main.rs                   ← `cairn <cmd>` — clap CLI, exit-code contract
+│   ├── config.rs state.rs gate.rs stages.rs intent.rs errors.rs
+│   ├── notify.rs import_state.rs evolve.rs
+│   └── knowledge/
+│       ├── model.rs schema.rs index.rs query.rs
+│       ├── lifecycle.rs          ← maturity / decay / promotion judging
+│       ├── extract_gate.rs refs.rs lint.rs
+│       └── kbrepo.rs             ← independent Git knowledge repo: pull/push/stage/conflict
+├── tests/cli.rs                  ← integration tests (drive the real binary)
+└── README.md  LICENSE  NOTICE.md  CONTRIBUTING.md  SETUP.md  USAGE.md
 ```
 
 Artifacts produced **inside a host project** once cairnkit is installed (never in this repo):
@@ -107,38 +106,38 @@ Artifacts produced **inside a host project** once cairnkit is installed (never i
 | Concern | Choice |
 |---|---|
 | Harness form | Claude Code plugin: Markdown skills/agents/commands + `plugin.json` + `hooks.json` |
-| Glue scripts | **Python 3.10+**, packaged as `cairnkit`, invoked via `python -m cairnkit ...` |
-| Python deps | **Minimal**: `ruamel.yaml` (order-preserving frontmatter) + stdlib; Git via `subprocess` (no gitpython) |
+| Deterministic core | **Rust**, compiled to a single `cairn` binary (~1.6 MB), **zero runtime deps** (no Python/Node/interpreter) |
+| Rust deps | `clap` (CLI) · `serde`/`serde_yaml`/`serde_json` · `chrono`; Git via `std::process::Command` (subprocess) |
 | Knowledge store | Markdown + YAML frontmatter + Git |
 | Retrieval (v1) | Structured filtering (tags / applicable_phases / category / domain + 3-level index). Semantic/vector retrieval is v2. |
-| Notification | Python + webhook, hook-triggered, pluggable channel |
-| Testing | pytest + coverage (Python layer 80%+) |
+| Notification | webhook via `curl` subprocess, hook-triggered, pluggable channel; degrades to a local file |
+| Testing | `cargo test` (unit + integration driving the real binary) |
 | **Not in v1** | ❌ database ❌ vector embeddings ❌ central service / MCP ❌ resident process |
 
-## 5. The `cairnkit` CLI (the deterministic surface)
+## 5. The `cairn` CLI (the deterministic surface)
 
 Every subcommand: ① read-only queries print JSON to stdout; ② mutations change files
-and return a result code; ③ all of it is pytest-able **without** Claude Code.
+and return a result code; ③ all of it is testable (`cargo test`) **without** Claude Code.
 
 ```
-python -m cairnkit state show|advance|set-stage|resume
-python -m cairnkit gate check --stage <S>
-python -m cairnkit intent classify --input <file>
-python -m cairnkit kb build-index
-python -m cairnkit kb query --stage <S> --budget <N> [--domain D]
-python -m cairnkit kb extract --from <run-dir>
-python -m cairnkit kb touch --from <run-dir>
-python -m cairnkit kb validate <file>
-python -m cairnkit lifecycle promote|decay
-python -m cairnkit lint [--fix]
-python -m cairnkit kbrepo pull|push|promote|stage-conflict
-python -m cairnkit notify --event <E> [--channel feishu]
+cairn state show|advance|set-stage|resume
+cairn gate check --stage <S>
+cairn intent classify --input <file>
+cairn kb build-index
+cairn kb query --stage <S> --budget <N> [--domain D]
+cairn kb extract --from <run-dir>
+cairn kb touch --from <run-dir>
+cairn kb validate <file>
+cairn lifecycle promote|decay
+cairn lint [--fix]
+cairn kbrepo pull|push|promote|stage-conflict
+cairn notify --event <E> [--channel feishu]
 ```
 
 ## 6. Coding standards
 
-- **Python is the testable core.** If logic is mechanical (state transitions, gates,
-  index, budget, schema, decay, Lint, promotion), it lives in Python and has tests.
+- **Rust is the testable core.** If logic is mechanical (state transitions, gates,
+  index, budget, schema, decay, Lint, promotion), it lives in `src/` and has tests.
   If it is creative/fuzzy (analysis, design, extraction prompts), it lives in Markdown.
 - **Many small files > few large files.** 200–400 lines typical, **800 max**.
   High cohesion, low coupling; organize by feature/domain.
@@ -179,11 +178,11 @@ P0 Intent decomposition  →  P1 Spec/design doc  →  P2 Plan  →  (human CONF
 
 - **P0–P2 are mandatory and gated.** No code is written before the plan is confirmed.
 - **Implementer ≠ reviewer ≠ tester (hard rule).** P4 Code Review is run by a *separate*
-  agent (`python-reviewer`/`code-reviewer`), and P5 Functional Test by *another* agent
+  agent (`rust-reviewer`/`code-reviewer`), and P5 Functional Test by *another* agent
   (`qa-tester`/`e2e-runner`) — never the agent that wrote the code. Independent perspective
   is the verification; self-review does not count. This mirrors the project's own context-firewall principle.
 - **P3 TDD.** Tests first (RED) → minimal implementation (GREEN) → refactor (IMPROVE);
-  Python layer 80%+ coverage; Python gate before Markdown shell.
+  `cargo test` green; the Rust core before the Markdown shell.
 - **P4** fixes all HIGH issues before proceeding.
 - **P6** commits with conventional-commit format (`feat:`/`fix:`/`refactor:`/`docs:`/`test:`/`chore:`)
   and **dogfoods**: precipitates the batch's pitfalls/decisions into draft knowledge — we are
@@ -203,4 +202,4 @@ This repo is the **engine** — generic, MIT, give-it-away. The competitive asse
   publicly published knowledge-precipitation ideas** — never as a clone of any internal product.
 - `_dev/` (private design docs) and `_research/` (reference repos) are git-ignored and never published.
 - Before any release: run the open-source sanitizer (secrets / PII / internal-ref scan);
-  ensure `pytest` is green and coverage meets target. See `_dev/opensource-design.md §8`.
+  ensure `cargo test` is green. See `_dev/opensource-design.md §8`.

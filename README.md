@@ -77,9 +77,9 @@ knowledge, not the harness.
 - **Feeding & reach (M8/M10)** — cold-start `/flow-import` pipeline and pluggable notifications.
 - **Self-evolution (M9)** — `/evolve` with a *structural* never-auto-apply guarantee.
 
-The deterministic Python core (`cairnkit/`) is fully test-covered (pytest, ~94%) and runs
-independently of Claude Code. Remaining: live in-Claude-Code validation of the orchestrator
-dispatching role sub-agents end-to-end.
+The deterministic core is a **single `cairn` binary** (Rust, zero runtime dependencies — no
+Python/Node/interpreter), test-covered and runs independently of Claude Code. Remaining: live
+in-Claude-Code validation of the orchestrator dispatching role sub-agents end-to-end.
 
 ## License & credits
 
