@@ -10,6 +10,6 @@ over quantity (the strict extraction gate will reject shallow ones anyway).
 
 Write a `knowledge-candidates.json` (list of candidate dicts: id/title/category/domain/type/
 knowledge_class/layer/tags/applicable_phases/body) under `docs/knowledge-import/`, then:
-`python3 -m cairnkit --root . kb extract --from docs/knowledge-import`
+`cairn --root . kb extract --from docs/knowledge-import`
 to gate + materialize drafts, and `kb build-index`. Initial maturity is draft.
 Write `docs/knowledge-import/03-summary.md`. Return a one-line summary.

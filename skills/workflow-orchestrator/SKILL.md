@@ -16,16 +16,16 @@ stage's work → ask Python to advance.
 ## The CLI you drive (from the host project root)
 
 ```bash
-python3 -m cairnkit --root . state show                       # current state (JSON)
-python3 -m cairnkit --root . state resume                     # {stage, paused}
-python3 -m cairnkit --root . state advance                    # -> next stage (gate-checked)
-python3 -m cairnkit --root . state set-path-mode <full|lite|single>
-python3 -m cairnkit --root . state approve-clarify            # clear a CLARIFY pause
-python3 -m cairnkit --root . state fail --stage <BUILD_VERIFY|E2E_VERIFY>
-python3 -m cairnkit --root . state unblock                    # after human fixes a blocked run
-python3 -m cairnkit --root . intent classify --text "<request>"
-python3 -m cairnkit --root . kb build-index
-python3 -m cairnkit --root . kb query --stage <S> --budget 300 [--domain <d>]
+cairn --root . state show                       # current state (JSON)
+cairn --root . state resume                     # {stage, paused}
+cairn --root . state advance                    # -> next stage (gate-checked)
+cairn --root . state set-path-mode <full|lite|single>
+cairn --root . state approve-clarify            # clear a CLARIFY pause
+cairn --root . state fail --stage <BUILD_VERIFY|E2E_VERIFY>
+cairn --root . state unblock                    # after human fixes a blocked run
+cairn --root . intent classify --text "<request>"
+cairn --root . kb build-index
+cairn --root . kb query --stage <S> --budget 300 [--domain <d>]
 ```
 
 Return codes: `0` ok · `2` usage · `3` gate refused · `4` STATE corrupt. **Never** edit

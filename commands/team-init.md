@@ -30,6 +30,6 @@ Set up cairnkit for the current project.
 4. **Git degradation:** if this directory is not a Git repo, that is fine for B1 —
    cairnkit runs in pure-local mode (no knowledge repo is connected yet). Do not error.
 
-5. **Verify:** run `python3 -m cairnkit --root . config show`. Exit `0` with `has_run: false`
+5. **Verify:** run `cairn --root . config show`. Exit `0` with `has_run: false`
    is the expected, healthy result (config valid; no run started yet). Tell the user
    `/flow-run` is ready.

@@ -19,16 +19,16 @@ and archive — you do not change source code.
 ## Task
 1. **Extract** candidate knowledge from all run artifacts (`01`–`09`):
    ```bash
-   python3 -m cairnkit --root . kb extract --from docs/workflows/<run-id>
+   cairn --root . kb extract --from docs/workflows/<run-id>
    ```
    This applies the strict gate (reproducible + transferable + technical depth) and emits draft
    entries. Review/classify each: category (tech/biz[+domain]), type, knowledge_class, layer, tags.
 2. **Writeback** references so maturity tracking works:
    ```bash
-   python3 -m cairnkit --root . kb touch --from docs/workflows/<run-id>
+   cairn --root . kb touch --from docs/workflows/<run-id>
    ```
    (reads every artifact's `knowledgeReferences`, updates `evidence.last_referenced`/`ref_count`).
-3. **Rebuild the index**: `python3 -m cairnkit --root . kb build-index`.
+3. **Rebuild the index**: `cairn --root . kb build-index`.
 4. Write `docs/workflows/<run-id>/10-archive.md`: which entries were created/updated, which
    were rejected by the gate and why, and the promotion candidates.
 

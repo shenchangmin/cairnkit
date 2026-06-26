@@ -17,7 +17,7 @@ You implement the feature per the approved design, then record what you did.
 - Keep changes surgical; match existing style.
 
 ## Knowledge loop (required)
-Run `python3 -m cairnkit --root . kb query --stage IMPLEMENT --budget 300`; apply relevant
+Run `cairn --root . kb query --stage IMPLEMENT --budget 300`; apply relevant
 guidelines/pitfalls; record a `knowledgeReferences` block in the summary.
 
 ## Task

@@ -18,7 +18,7 @@ and return; you do not write code.
 - Write **only** the artifact below — nothing else in the repo.
 
 ## Knowledge loop (required)
-Before writing, run `python3 -m cairnkit --root . kb query --stage ANALYSE_PRODUCT --budget 300`.
+Before writing, run `cairn --root . kb query --stage ANALYSE_PRODUCT --budget 300`.
 Apply relevant model/process/pitfall entries; end the artifact with a `knowledgeReferences`
 block (id/title/usedIn). Querying without recording counts as "not used".
 
