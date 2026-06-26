@@ -79,8 +79,12 @@ enum StateCmd {
     Show,
     Resume,
     Advance,
-    SetStage { stage: String },
-    SetPathMode { mode: String },
+    SetStage {
+        stage: String,
+    },
+    SetPathMode {
+        mode: String,
+    },
     ApproveClarify,
     Fail {
         #[arg(long)]
@@ -115,7 +119,9 @@ enum KbCmd {
         #[arg(long)]
         domain: Option<String>,
     },
-    Validate { file: PathBuf },
+    Validate {
+        file: PathBuf,
+    },
     Extract {
         #[arg(long = "from")]
         from: PathBuf,
@@ -132,6 +138,7 @@ enum LifecycleCmd {
 }
 #[derive(Subcommand)]
 enum KbrepoCmd {
+    Init,
     Pull,
     Push {
         #[arg(long)]
@@ -233,8 +240,12 @@ fn run(cli: Cli) -> Result<i32> {
         Top::Lifecycle(lc) => {
             let c = config::load_config(root)?;
             match lc {
-                LifecycleCmd::Promote => emit(json!({"promoted": lifecycle::promote_repo(&c.knowledge_root)})),
-                LifecycleCmd::Decay => emit(json!({"decayed": lifecycle::decay_repo(&c.knowledge_root)})),
+                LifecycleCmd::Promote => {
+                    emit(json!({"promoted": lifecycle::promote_repo(&c.knowledge_root)}))
+                }
+                LifecycleCmd::Decay => {
+                    emit(json!({"decayed": lifecycle::decay_repo(&c.knowledge_root)}))
+                }
             }
         }
         Top::Lint { fix } => {
@@ -248,16 +259,29 @@ fn run(cli: Cli) -> Result<i32> {
         Top::Kbrepo(kc) => return kbrepo_cmd(root, kc),
         Top::Knowledge(KnowledgeCmd::Stats) => {
             let c = config::load_config(root)?;
-            let repo = c.knowledge_repo_local.clone().unwrap_or_else(|| c.knowledge_root.clone());
+            let repo = c
+                .knowledge_repo_local
+                .clone()
+                .unwrap_or_else(|| c.knowledge_root.clone());
             let mut v = kbrepo::stats(&repo);
             if c.knowledge_repo_local.is_none() {
-                v["warning"] = json!("no shared knowledge_repo configured — scanning local knowledge_root");
+                v["warning"] =
+                    json!("no shared knowledge_repo configured — scanning local knowledge_root");
             }
             emit(v);
         }
-        Top::Notify { event, detail, channel } => {
+        Top::Notify {
+            event,
+            detail,
+            channel,
+        } => {
             let c = config::load_config(root)?;
-            emit(notify::notify(&event, &c, detail.as_deref().unwrap_or(""), &channel));
+            emit(notify::notify(
+                &event,
+                &c,
+                detail.as_deref().unwrap_or(""),
+                &channel,
+            ));
         }
         Top::Import(ic) => {
             let c = config::load_config(root)?;
@@ -306,7 +330,11 @@ fn kb_cmd(root: &Path, kc: KbCmd) -> Result<i32> {
             let stats = index::build_index(&c.knowledge_root)?;
             emit(serde_json::to_value(stats).unwrap());
         }
-        KbCmd::Query { stage, budget, domain } => {
+        KbCmd::Query {
+            stage,
+            budget,
+            domain,
+        } => {
             let dom = domain.or_else(|| c.domain.clone());
             let r = query::query(&c.knowledge_root, &stage, budget, dom.as_deref());
             emit(json!({
@@ -329,11 +357,17 @@ fn kbrepo_cmd(root: &Path, kc: KbrepoCmd) -> Result<i32> {
     let c = config::load_config(root)?;
     let repo = kbrepo_path(&c)?;
     match kc {
+        KbrepoCmd::Init => {
+            kbrepo::init_repo(&repo)?;
+            emit(json!({"initialized": repo.to_string_lossy(), "is_git_repo": kbrepo::is_git_repo(&repo)}));
+        }
         KbrepoCmd::Pull => emit(kbrepo::pull(&repo)),
         KbrepoCmd::Push { message } => emit(kbrepo::push(&repo, &message)?),
         KbrepoCmd::Promote { id, to } => {
             let dest = kbrepo::promote_entry(&repo, &id, &to)?;
-            emit(json!({"promoted": id, "to": to, "path": dest.strip_prefix(&repo).unwrap_or(&dest).to_string_lossy()}));
+            emit(
+                json!({"promoted": id, "to": to, "path": dest.strip_prefix(&repo).unwrap_or(&dest).to_string_lossy()}),
+            );
         }
         KbrepoCmd::StageConflict { id, file } => {
             let body = std::fs::read_to_string(&file)?;
@@ -353,7 +387,9 @@ fn evolve_cmd(root: &Path, ec: EvolveCmd) -> Result<i32> {
                 None => content.unwrap_or_default(),
             };
             let path = evolve::propose(&c.root, &id, &body)?;
-            emit(json!({"proposed": id, "path": path.strip_prefix(&c.root).unwrap_or(&path).to_string_lossy()}));
+            emit(
+                json!({"proposed": id, "path": path.strip_prefix(&c.root).unwrap_or(&path).to_string_lossy()}),
+            );
         }
         EvolveCmd::List { state } => {
             emit(json!({"state": state, "proposals": evolve::list_proposals(&c.root, &state)?}));

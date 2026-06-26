@@ -78,7 +78,9 @@ pub fn collect_references(run_dir: &Path) -> Vec<String> {
 }
 
 pub fn touch(kb_root: &Path, run_dir: &Path, project: &str, today: Option<&str>) -> Value {
-    let today = today.map(String::from).unwrap_or_else(|| Local::now().format("%Y-%m-%d").to_string());
+    let today = today
+        .map(String::from)
+        .unwrap_or_else(|| Local::now().format("%Y-%m-%d").to_string());
     let referenced = collect_references(run_dir);
     let mut counts: BTreeMap<String, u64> = BTreeMap::new();
     for id in &referenced {

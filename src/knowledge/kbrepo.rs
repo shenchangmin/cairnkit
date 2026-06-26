@@ -12,7 +12,9 @@ use std::process::Command;
 pub const LOG_FILE: &str = "log.md";
 pub const CONFLICTS_DIR: &str = "contributions/conflicts";
 
+#[allow(dead_code)] // contribution-flow API (tested; not yet CLI-wired)
 const AUTO_MERGE: &[&str] = &["add", "evidence", "promote_verified"];
+#[allow(dead_code)]
 const NEEDS_REVIEW: &[&str] = &["conflict", "promote_proven", "team_convention"];
 
 pub fn git(repo: &Path, args: &[&str]) -> Result<String> {
@@ -36,7 +38,9 @@ pub fn is_git_repo(path: &Path) -> bool {
     path.join(".git").exists()
 }
 pub fn has_remote(repo: &Path) -> bool {
-    git(repo, &["remote"]).map(|s| !s.is_empty()).unwrap_or(false)
+    git(repo, &["remote"])
+        .map(|s| !s.is_empty())
+        .unwrap_or(false)
 }
 
 pub fn init_repo(repo: &Path) -> Result<()> {
@@ -72,7 +76,9 @@ pub fn push(repo: &Path, message: &str) -> Result<Value> {
     }
     git(repo, &["commit", "-q", "-m", message])?;
     if !has_remote(repo) {
-        return Ok(json!({"committed": true, "pushed": false, "reason": "no remote (committed locally)"}));
+        return Ok(
+            json!({"committed": true, "pushed": false, "reason": "no remote (committed locally)"}),
+        );
     }
     match git(repo, &["push"]) {
         Ok(_) => Ok(json!({"committed": true, "pushed": true})),
@@ -82,11 +88,15 @@ pub fn push(repo: &Path, message: &str) -> Result<Value> {
 
 pub fn append_log(repo: &Path, line: &str) -> Result<()> {
     use std::io::Write;
-    let mut f = std::fs::OpenOptions::new().create(true).append(true).open(repo.join(LOG_FILE))?;
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(repo.join(LOG_FILE))?;
     writeln!(f, "{}", line.replace('\n', " ").trim_end())?;
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn classify_contribution(kind: &str) -> Result<&'static str> {
     if AUTO_MERGE.contains(&kind) {
         Ok("auto")
@@ -100,17 +110,28 @@ pub fn classify_contribution(kind: &str) -> Result<&'static str> {
 fn safe_id(id: &str) -> Result<&str> {
     let ok = !id.is_empty()
         && !id.contains("..")
-        && id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
     if ok {
         Ok(id)
     } else {
-        Err(usage(format!("invalid id {id:?} (allowed: letters, digits, . _ -)")))
+        Err(usage(format!(
+            "invalid id {id:?} (allowed: letters, digits, . _ -)"
+        )))
     }
 }
 
-pub fn stage_conflict(repo: &Path, entry_id: &str, body: &str, today: Option<&str>) -> Result<PathBuf> {
+pub fn stage_conflict(
+    repo: &Path,
+    entry_id: &str,
+    body: &str,
+    today: Option<&str>,
+) -> Result<PathBuf> {
     safe_id(entry_id)?;
-    let today = today.map(String::from).unwrap_or_else(|| Local::now().format("%Y-%m-%d").to_string());
+    let today = today
+        .map(String::from)
+        .unwrap_or_else(|| Local::now().format("%Y-%m-%d").to_string());
     let target = repo.join(CONFLICTS_DIR);
     std::fs::create_dir_all(&target)?;
     let mut path = target.join(format!("{entry_id}-{today}.md"));
@@ -120,7 +141,13 @@ pub fn stage_conflict(repo: &Path, entry_id: &str, body: &str, today: Option<&st
         n += 1;
     }
     std::fs::write(&path, body)?;
-    append_log(repo, &format!("- {today} CONFLICT staged for {entry_id} -> {}", path.file_name().unwrap().to_string_lossy()))?;
+    append_log(
+        repo,
+        &format!(
+            "- {today} CONFLICT staged for {entry_id} -> {}",
+            path.file_name().unwrap().to_string_lossy()
+        ),
+    )?;
     Ok(path)
 }
 
@@ -133,17 +160,27 @@ pub fn promote_entry(repo: &Path, entry_id: &str, target_layer: &str) -> Result<
     let m = entries.iter().find(|e| e.id == entry_id && e.layer == "L3");
     let entry = match m {
         Some(e) if e.path.is_some() => e,
-        _ => return Err(usage(format!("no L3 entry with id {entry_id} found in {}", repo.display()))),
+        _ => {
+            return Err(usage(format!(
+                "no L3 entry with id {entry_id} found in {}",
+                repo.display()
+            )))
+        }
     };
     let src = entry.path.clone().unwrap();
     let fname = src.file_name().unwrap();
     let dest = if target_layer == "L1" {
         repo.join("tech-wiki").join(fname)
     } else {
-        repo.join("biz-wiki").join(entry.domain.clone().unwrap_or_else(|| "_".to_string())).join(fname)
+        repo.join("biz-wiki")
+            .join(entry.domain.clone().unwrap_or_else(|| "_".to_string()))
+            .join(fname)
     };
     if dest.exists() && dest != src {
-        return Err(usage(format!("destination {} already exists — refusing to overwrite", fname.to_string_lossy())));
+        return Err(usage(format!(
+            "destination {} already exists — refusing to overwrite",
+            fname.to_string_lossy()
+        )));
     }
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent)?;
@@ -154,7 +191,13 @@ pub fn promote_entry(repo: &Path, entry_id: &str, target_layer: &str) -> Result<
     if src != dest {
         let _ = std::fs::remove_file(&src);
     }
-    append_log(repo, &format!("- {} PROMOTE {entry_id} -> {target_layer}", Local::now().format("%Y-%m-%d")))?;
+    append_log(
+        repo,
+        &format!(
+            "- {} PROMOTE {entry_id} -> {target_layer}",
+            Local::now().format("%Y-%m-%d")
+        ),
+    )?;
     Ok(dest)
 }
 
@@ -172,7 +215,11 @@ pub fn stats(repo: &Path) -> Value {
         .filter(|e| e.evidence.ref_count == 0 && e.maturity != "draft")
         .map(|e| e.id.clone())
         .collect();
-    let rate = if entries.is_empty() { 0.0 } else { (referenced as f64 / entries.len() as f64 * 100.0).round() / 100.0 };
+    let rate = if entries.is_empty() {
+        0.0
+    } else {
+        (referenced as f64 / entries.len() as f64 * 100.0).round() / 100.0
+    };
     json!({
         "total": entries.len(),
         "by_maturity": by_mat,

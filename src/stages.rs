@@ -25,9 +25,19 @@ pub const PATH_MODES: &[&str] = &["full", "lite", "single"];
 pub const RETRY_STAGES: &[&str] = &["BUILD_VERIFY", "E2E_VERIFY"];
 pub const RETRY_CAP: u32 = 5;
 
-const LITE_EXCLUDE: &[&str] = &["ARCHITECT_FRONTEND", "CLARIFY_ARCH_FRONTEND", "VISUAL_REVIEW"];
+const LITE_EXCLUDE: &[&str] = &[
+    "ARCHITECT_FRONTEND",
+    "CLARIFY_ARCH_FRONTEND",
+    "VISUAL_REVIEW",
+];
 const SINGLE_INCLUDE: &[&str] = &[
-    "INIT", "INTENT_GATE", "IMPLEMENT", "BUILD_VERIFY", "TEST", "ARCHIVE", "DONE",
+    "INIT",
+    "INTENT_GATE",
+    "IMPLEMENT",
+    "BUILD_VERIFY",
+    "TEST",
+    "ARCHIVE",
+    "DONE",
 ];
 
 /// Artifact a stage produces (verified on advance out of that stage). None for others.
@@ -108,7 +118,10 @@ mod tests {
 
     #[test]
     fn lite_skips_frontend() {
-        assert_eq!(next_stage("CLARIFY_ARCH_BACKEND", "lite"), Some("IMPLEMENT"));
+        assert_eq!(
+            next_stage("CLARIFY_ARCH_BACKEND", "lite"),
+            Some("IMPLEMENT")
+        );
     }
 
     #[test]

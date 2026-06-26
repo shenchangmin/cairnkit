@@ -18,7 +18,9 @@ pub fn months_between(earlier_iso: &str, now: NaiveDate) -> f64 {
     }
     let (y, m, d) = (parts[0], parts[1], parts[2]);
     use chrono::Datelike;
-    (now.year() - y) as f64 * 12.0 + (now.month() as i32 - m) as f64 + (now.day() as i32 - d) as f64 / 30.0
+    (now.year() - y) as f64 * 12.0
+        + (now.month() as i32 - m) as f64
+        + (now.day() as i32 - d) as f64 / 30.0
 }
 
 fn today() -> NaiveDate {
@@ -63,6 +65,7 @@ pub fn decay(entry: &Entry, now: Option<NaiveDate>) -> Entry {
     entry.clone()
 }
 
+#[allow(dead_code)] // promotion-layer suggestion API (tested; advisory)
 pub fn judge_layer(entry: &Entry) -> &'static str {
     if entry.evidence.projects.len() <= 1 {
         "L3"
@@ -102,18 +105,41 @@ mod tests {
 
     fn entry(maturity: &str, ev: Evidence) -> Entry {
         Entry {
-            id: "TK-1".into(), title: "t".into(), category: "tech".into(), domain: None,
-            kind: "decision".into(), guideline_polarity: None, maturity: maturity.into(),
-            knowledge_class: "point".into(), layer: "L3".into(), tags: vec![],
-            applicable_phases: vec![], evidence: ev, history: vec![], body: "b".into(), path: None,
+            id: "TK-1".into(),
+            title: "t".into(),
+            category: "tech".into(),
+            domain: None,
+            kind: "decision".into(),
+            guideline_polarity: None,
+            maturity: maturity.into(),
+            knowledge_class: "point".into(),
+            layer: "L3".into(),
+            tags: vec![],
+            applicable_phases: vec![],
+            evidence: ev,
+            history: vec![],
+            body: "b".into(),
+            path: None,
         }
     }
 
     #[test]
     fn promote_rules() {
-        let e = entry("draft", Evidence { ref_count: 1, ..Default::default() });
+        let e = entry(
+            "draft",
+            Evidence {
+                ref_count: 1,
+                ..Default::default()
+            },
+        );
         assert_eq!(promote(&e, None).maturity, "verified");
-        let e = entry("verified", Evidence { projects: vec!["a".into(), "b".into()], ..Default::default() });
+        let e = entry(
+            "verified",
+            Evidence {
+                projects: vec!["a".into(), "b".into()],
+                ..Default::default()
+            },
+        );
         assert_eq!(promote(&e, None).maturity, "proven");
         let e = entry("draft", Evidence::default());
         assert_eq!(promote(&e, None).maturity, "draft");
@@ -122,16 +148,44 @@ mod tests {
     #[test]
     fn decay_rules() {
         let now = NaiveDate::from_ymd_opt(2026, 6, 1).unwrap();
-        let e = entry("proven", Evidence { last_referenced: Some("2025-01-01".into()), ref_count: 5, ..Default::default() });
+        let e = entry(
+            "proven",
+            Evidence {
+                last_referenced: Some("2025-01-01".into()),
+                ref_count: 5,
+                ..Default::default()
+            },
+        );
         assert_eq!(decay(&e, Some(now)).maturity, "verified");
-        let e = entry("proven", Evidence { last_referenced: None, ..Default::default() });
+        let e = entry(
+            "proven",
+            Evidence {
+                last_referenced: None,
+                ..Default::default()
+            },
+        );
         assert_eq!(decay(&e, Some(now)).maturity, "proven");
     }
 
     #[test]
     fn judge() {
-        assert_eq!(judge_layer(&entry("draft", Evidence { projects: vec!["only".into()], ..Default::default() })), "L3");
-        let mut e = entry("verified", Evidence { projects: vec!["a".into(), "b".into()], ..Default::default() });
+        assert_eq!(
+            judge_layer(&entry(
+                "draft",
+                Evidence {
+                    projects: vec!["only".into()],
+                    ..Default::default()
+                }
+            )),
+            "L3"
+        );
+        let mut e = entry(
+            "verified",
+            Evidence {
+                projects: vec!["a".into(), "b".into()],
+                ..Default::default()
+            },
+        );
         assert_eq!(judge_layer(&e), "L1");
         e.category = "biz".into();
         e.domain = Some("ads".into());

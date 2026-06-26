@@ -1,12 +1,30 @@
 //! IntentGate heuristic routing (mirrors Python `cairnkit.intent`).
 
 const SINGLE_HINTS: &[&str] = &[
-    "typo", "rename", "bump", "comment", "log message", "one line", "one-line", "tweak",
-    "constant", "config value", "version",
+    "typo",
+    "rename",
+    "bump",
+    "comment",
+    "log message",
+    "one line",
+    "one-line",
+    "tweak",
+    "constant",
+    "config value",
+    "version",
 ];
 const FRONTEND_HINTS: &[&str] = &[
-    "ui", "page", "screen", "component", "css", "frontend", "front-end", "visual", "button",
-    "layout", "style",
+    "ui",
+    "page",
+    "screen",
+    "component",
+    "css",
+    "frontend",
+    "front-end",
+    "visual",
+    "button",
+    "layout",
+    "style",
 ];
 
 pub struct IntentResult {

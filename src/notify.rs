@@ -32,7 +32,16 @@ pub fn notify(event: &str, config: &Config, detail: &str, channel: &str) -> Valu
 fn send_feishu(url: &str, text: &str) -> Result<(), String> {
     let payload = json!({"msg_type": "text", "content": {"text": text}}).to_string();
     let out = Command::new("curl")
-        .args(["-sS", "-X", "POST", "-H", "Content-Type: application/json", "-d", &payload, url])
+        .args([
+            "-sS",
+            "-X",
+            "POST",
+            "-H",
+            "Content-Type: application/json",
+            "-d",
+            &payload,
+            url,
+        ])
         .output()
         .map_err(|e| e.to_string())?;
     if out.status.success() {
@@ -48,9 +57,17 @@ fn local(config: &Config, text: &str, reason: &str) -> Value {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+    {
         let _ = writeln!(f, "{text}");
     }
-    let rel = path.strip_prefix(&config.root).unwrap_or(&path).to_string_lossy().to_string();
+    let rel = path
+        .strip_prefix(&config.root)
+        .unwrap_or(&path)
+        .to_string_lossy()
+        .to_string();
     json!({"sent": false, "local": rel, "reason": reason})
 }

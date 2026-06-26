@@ -32,8 +32,16 @@ pub fn query(kb_root: &Path, stage: &str, budget_lines: i64, domain: Option<&str
         .filter(|e| applies(e, stage, domain))
         .collect();
     candidates.sort_by(|a, b| {
-        (-maturity_rank(&a.maturity), -class_rank(&a.knowledge_class), &a.id)
-            .cmp(&(-maturity_rank(&b.maturity), -class_rank(&b.knowledge_class), &b.id))
+        (
+            -maturity_rank(&a.maturity),
+            -class_rank(&a.knowledge_class),
+            &a.id,
+        )
+            .cmp(&(
+                -maturity_rank(&b.maturity),
+                -class_rank(&b.knowledge_class),
+                &b.id,
+            ))
     });
 
     let mut injected: Vec<String> = Vec::new();

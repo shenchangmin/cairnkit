@@ -31,7 +31,10 @@ pub fn evaluate(c: &Value) -> Vec<String> {
     if !TYPES.contains(&s("type")) {
         reasons.push("missing/invalid type".to_string());
     }
-    let kc = c.get("knowledge_class").and_then(|v| v.as_str()).unwrap_or("point");
+    let kc = c
+        .get("knowledge_class")
+        .and_then(|v| v.as_str())
+        .unwrap_or("point");
     if !KNOWLEDGE_CLASSES.contains(&kc) {
         reasons.push("invalid knowledge_class".to_string());
     }
@@ -42,25 +45,39 @@ pub fn evaluate(c: &Value) -> Vec<String> {
 }
 
 fn str_field(c: &Value, k: &str, default: &str) -> String {
-    c.get(k).and_then(|v| v.as_str()).unwrap_or(default).to_string()
+    c.get(k)
+        .and_then(|v| v.as_str())
+        .unwrap_or(default)
+        .to_string()
 }
 fn vec_field(c: &Value, k: &str) -> Vec<String> {
     c.get(k)
         .and_then(|v| v.as_array())
-        .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(String::from))
+                .collect()
+        })
         .unwrap_or_default()
 }
 
 fn candidate_to_entry(c: &Value, now: &str) -> Entry {
     let domain = c.get("domain").and_then(|v| v.as_str()).map(String::from);
-    let polarity = c.get("guideline_polarity").and_then(|v| v.as_str()).map(String::from);
+    let polarity = c
+        .get("guideline_polarity")
+        .and_then(|v| v.as_str())
+        .map(String::from);
     let mut hist = serde_yaml::Mapping::new();
     hist.insert("date".into(), now.into());
     hist.insert("update_type".into(), "extract".into());
     hist.insert("by".into(), "archiver".into());
     let kc = {
         let v = str_field(c, "knowledge_class", "point");
-        if v.is_empty() { "point".to_string() } else { v }
+        if v.is_empty() {
+            "point".to_string()
+        } else {
+            v
+        }
     };
     Entry {
         id: str_field(c, "id", ""),
@@ -74,7 +91,10 @@ fn candidate_to_entry(c: &Value, now: &str) -> Entry {
         layer: str_field(c, "layer", "L3"),
         tags: vec_field(c, "tags"),
         applicable_phases: vec_field(c, "applicable_phases"),
-        evidence: Evidence { contributors: vec_field(c, "contributors"), ..Default::default() },
+        evidence: Evidence {
+            contributors: vec_field(c, "contributors"),
+            ..Default::default()
+        },
         history: vec![serde_yaml::Value::Mapping(hist)],
         body: str_field(c, "body", ""),
         path: None,
@@ -83,7 +103,10 @@ fn candidate_to_entry(c: &Value, now: &str) -> Entry {
 
 fn entry_path(kb_root: &Path, e: &Entry) -> PathBuf {
     if e.category == "biz" {
-        kb_root.join("biz-wiki").join(e.domain.clone().unwrap_or_else(|| "_".to_string())).join(format!("{}.md", e.id))
+        kb_root
+            .join("biz-wiki")
+            .join(e.domain.clone().unwrap_or_else(|| "_".to_string()))
+            .join(format!("{}.md", e.id))
     } else {
         kb_root.join("tech-wiki").join(format!("{}.md", e.id))
     }
@@ -101,11 +124,15 @@ pub fn extract_from_run(run_dir: &Path, kb_root: &Path) -> Value {
     };
     let candidates: Value = match serde_json::from_str(&text) {
         Ok(v) => v,
-        Err(e) => return json!({"written": [], "rejected": [], "error": format!("malformed {CANDIDATES_FILE}: {e}")}),
+        Err(e) => {
+            return json!({"written": [], "rejected": [], "error": format!("malformed {CANDIDATES_FILE}: {e}")})
+        }
     };
     let arr = match candidates.as_array() {
         Some(a) => a,
-        None => return json!({"written": [], "rejected": [], "error": format!("{CANDIDATES_FILE} must be a JSON list")}),
+        None => {
+            return json!({"written": [], "rejected": [], "error": format!("{CANDIDATES_FILE} must be a JSON list")})
+        }
     };
 
     let mut written = Vec::new();
@@ -119,7 +146,9 @@ pub fn extract_from_run(run_dir: &Path, kb_root: &Path) -> Value {
         let entry = candidate_to_entry(c, &now);
         let errs = iter_errors(&entry);
         if !errs.is_empty() {
-            rejected.push(json!({"title": entry.title, "reasons": [format!("schema: {}", errs.join("; "))]}));
+            rejected.push(
+                json!({"title": entry.title, "reasons": [format!("schema: {}", errs.join("; "))]}),
+            );
             continue;
         }
         if save_entry(&entry_path(kb_root, &entry), &entry).is_ok() {

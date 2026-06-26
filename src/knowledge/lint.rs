@@ -63,7 +63,10 @@ pub fn lint(kb_root: &Path, fix: bool, now: Option<NaiveDate>) -> Result<LintRep
 
     let mut by_title: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for e in &entries {
-        by_title.entry(e.title.trim().to_lowercase()).or_default().push(e.id.clone());
+        by_title
+            .entry(e.title.trim().to_lowercase())
+            .or_default()
+            .push(e.id.clone());
     }
     let duplicates: Vec<Vec<String>> = by_title.into_values().filter(|ids| ids.len() > 1).collect();
 
@@ -75,7 +78,14 @@ pub fn lint(kb_root: &Path, fix: bool, now: Option<NaiveDate>) -> Result<LintRep
         fixed.push("rebuilt index".to_string());
     }
 
-    Ok(LintReport { orphans, stale, duplicates, invalid, conflicts, fixed })
+    Ok(LintReport {
+        orphans,
+        stale,
+        duplicates,
+        invalid,
+        conflicts,
+        fixed,
+    })
 }
 
 fn find_conflicts(entries: &[Entry]) -> Vec<Vec<String>> {

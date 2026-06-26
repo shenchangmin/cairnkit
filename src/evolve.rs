@@ -24,7 +24,10 @@ fn log_line(root: &Path, line: &str) -> Result<()> {
     if let Some(parent) = log.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let mut f = std::fs::OpenOptions::new().create(true).append(true).open(&log)?;
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log)?;
     writeln!(f, "{} {}", Local::now().format("%Y-%m-%dT%H:%M:%S"), line)?;
     Ok(())
 }
@@ -32,11 +35,15 @@ fn log_line(root: &Path, line: &str) -> Result<()> {
 fn safe_id(id: &str) -> Result<&str> {
     let ok = !id.is_empty()
         && !id.contains("..")
-        && id.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
     if ok {
         Ok(id)
     } else {
-        Err(usage(format!("invalid proposal id {id:?} (allowed: letters, digits, . _ -)")))
+        Err(usage(format!(
+            "invalid proposal id {id:?} (allowed: letters, digits, . _ -)"
+        )))
     }
 }
 

@@ -37,7 +37,14 @@ pub fn iter_entries(kb_root: &Path) -> Vec<Entry> {
 }
 
 fn line(e: &Entry) -> String {
-    format!("{} | {} | {} | {} | {}", e.id, e.title, e.maturity, e.knowledge_class, e.tags.join(","))
+    format!(
+        "{} | {} | {} | {} | {}",
+        e.id,
+        e.title,
+        e.maturity,
+        e.knowledge_class,
+        e.tags.join(",")
+    )
 }
 
 fn write_catalog(path: &Path, title: &str, entries: &mut Vec<&Entry>) -> Result<()> {
@@ -62,7 +69,11 @@ pub fn build_index(kb_root: &Path) -> Result<BTreeMap<String, i64>> {
 
     let mut tech: Vec<&Entry> = entries.iter().filter(|e| e.category == "tech").collect();
     if !tech.is_empty() {
-        write_catalog(&kb_root.join("tech-wiki").join(CATALOG_B), "Tech knowledge (L1)", &mut tech)?;
+        write_catalog(
+            &kb_root.join("tech-wiki").join(CATALOG_B),
+            "Tech knowledge (L1)",
+            &mut tech,
+        )?;
     }
     let mut biz_by_domain: BTreeMap<String, Vec<&Entry>> = BTreeMap::new();
     for e in entries.iter().filter(|e| e.category == "biz") {
@@ -83,8 +94,14 @@ pub fn build_index(kb_root: &Path) -> Result<BTreeMap<String, i64>> {
 
     let mut stats = BTreeMap::new();
     stats.insert("total".to_string(), entries.len() as i64);
-    stats.insert("tech".to_string(), entries.iter().filter(|e| e.category == "tech").count() as i64);
-    stats.insert("biz".to_string(), entries.iter().filter(|e| e.category == "biz").count() as i64);
+    stats.insert(
+        "tech".to_string(),
+        entries.iter().filter(|e| e.category == "tech").count() as i64,
+    );
+    stats.insert(
+        "biz".to_string(),
+        entries.iter().filter(|e| e.category == "biz").count() as i64,
+    );
     stats.insert("domains".to_string(), biz_by_domain.len() as i64);
     Ok(stats)
 }
@@ -110,8 +127,18 @@ fn write_panorama(path: &Path, entries: &[Entry]) -> Result<()> {
             count(&|e| e.category == "tech"),
             count(&|e| e.category == "biz")
         ),
-        format!("- maturity: draft={}, verified={}, proven={}", mat("draft"), mat("verified"), mat("proven")),
-        format!("- class: point={}, causal={}, spatiotemporal={}", cls("point"), cls("causal"), cls("spatiotemporal")),
+        format!(
+            "- maturity: draft={}, verified={}, proven={}",
+            mat("draft"),
+            mat("verified"),
+            mat("proven")
+        ),
+        format!(
+            "- class: point={}, causal={}, spatiotemporal={}",
+            cls("point"),
+            cls("causal"),
+            cls("spatiotemporal")
+        ),
         String::new(),
         "## Entries applicable per stage".to_string(),
         String::new(),

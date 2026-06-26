@@ -61,7 +61,10 @@ fn config_show_then_init() {
     assert_eq!(r.code, 0);
     assert_eq!(json(&r.stdout)["has_run"], false);
     init(d.path());
-    assert_eq!(json(&run(d.path(), &["config", "show"]).stdout)["has_run"], true);
+    assert_eq!(
+        json(&run(d.path(), &["config", "show"]).stdout)["has_run"],
+        true
+    );
 }
 
 #[test]
@@ -89,10 +92,16 @@ fn clarify_pause_and_approval() {
     run(d.path(), &["state", "set-stage", "ANALYSE_PRODUCT"]);
     write_artifact(d.path(), "01-product.md");
     run(d.path(), &["state", "advance"]); // -> CLARIFY_PRODUCT
-    assert_eq!(json(&run(d.path(), &["state", "resume"]).stdout)["paused"], true);
+    assert_eq!(
+        json(&run(d.path(), &["state", "resume"]).stdout)["paused"],
+        true
+    );
     assert_eq!(run(d.path(), &["state", "advance"]).code, 3); // not approved
     run(d.path(), &["state", "approve-clarify"]);
-    assert_eq!(json(&run(d.path(), &["state", "advance"]).stdout)["stage"], "ANALYSE_TECH");
+    assert_eq!(
+        json(&run(d.path(), &["state", "advance"]).stdout)["stage"],
+        "ANALYSE_TECH"
+    );
 }
 
 #[test]
@@ -120,7 +129,10 @@ fn retry_then_block_then_unblock() {
     }
     let s = run(d.path(), &["state", "show"]);
     assert!(json(&s.stdout)["blocked_reason"].is_string());
-    assert_eq!(run(d.path(), &["state", "fail", "--stage", "IMPLEMENT"]).code, 2);
+    assert_eq!(
+        run(d.path(), &["state", "fail", "--stage", "IMPLEMENT"]).code,
+        2
+    );
     assert_eq!(run(d.path(), &["state", "unblock"]).code, 0);
 }
 
@@ -135,7 +147,10 @@ fn set_path_mode_validation() {
 #[test]
 fn intent_classify() {
     let d = project();
-    assert_eq!(json(&run(d.path(), &["intent", "classify", "--text", "fix a typo"]).stdout)["path_mode"], "single");
+    assert_eq!(
+        json(&run(d.path(), &["intent", "classify", "--text", "fix a typo"]).stdout)["path_mode"],
+        "single"
+    );
 }
 
 // ---- knowledge layer ----
@@ -151,9 +166,25 @@ fn kb_entry(root: &Path) -> PathBuf {
 fn kb_validate_build_query() {
     let d = project();
     let p = kb_entry(d.path());
-    assert_eq!(run(d.path(), &["kb", "validate", p.to_str().unwrap()]).code, 0);
-    assert_eq!(json(&run(d.path(), &["kb", "build-index"]).stdout)["total"], 1);
-    let q = run(d.path(), &["kb", "query", "--stage", "ARCHITECT_BACKEND", "--budget", "2"]);
+    assert_eq!(
+        run(d.path(), &["kb", "validate", p.to_str().unwrap()]).code,
+        0
+    );
+    assert_eq!(
+        json(&run(d.path(), &["kb", "build-index"]).stdout)["total"],
+        1
+    );
+    let q = run(
+        d.path(),
+        &[
+            "kb",
+            "query",
+            "--stage",
+            "ARCHITECT_BACKEND",
+            "--budget",
+            "2",
+        ],
+    );
     let v = json(&q.stdout);
     assert_eq!(v["injected_ids"][0], "TK-001");
     assert_eq!(v["over_budget"], true); // never-silent budget
@@ -166,7 +197,10 @@ fn kb_validate_rejects_bad_entry() {
     std::fs::create_dir_all(p.parent().unwrap()).unwrap();
     // tech entry with a domain -> schema violation
     std::fs::write(&p, "---\nid: TK-9\ntitle: t\ncategory: tech\ndomain: oops\ntype: decision\nmaturity: draft\nlayer: L1\napplicable_phases: [IMPLEMENT]\n---\nbody here long enough.\n").unwrap();
-    assert_eq!(run(d.path(), &["kb", "validate", p.to_str().unwrap()]).code, 2);
+    assert_eq!(
+        run(d.path(), &["kb", "validate", p.to_str().unwrap()]).code,
+        2
+    );
 }
 
 #[test]
@@ -175,12 +209,25 @@ fn reference_loop_drives_promotion() {
     kb_entry(d.path());
     let run_dir = d.path().join("docs/workflows/r1");
     std::fs::create_dir_all(&run_dir).unwrap();
-    std::fs::write(run_dir.join("03-arch.md"), r#"{"knowledgeReferences":[{"id":"TK-001"}]}"#).unwrap();
-    assert_eq!(run(d.path(), &["kb", "touch", "--from", run_dir.to_str().unwrap()]).code, 0);
-    assert!(json(&run(d.path(), &["lifecycle", "promote"]).stdout)["promoted"]
-        .as_array()
-        .unwrap()
-        .contains(&serde_json::json!("TK-001")));
+    std::fs::write(
+        run_dir.join("03-arch.md"),
+        r#"{"knowledgeReferences":[{"id":"TK-001"}]}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        run(
+            d.path(),
+            &["kb", "touch", "--from", run_dir.to_str().unwrap()]
+        )
+        .code,
+        0
+    );
+    assert!(
+        json(&run(d.path(), &["lifecycle", "promote"]).stdout)["promoted"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("TK-001"))
+    );
 }
 
 // ---- evolve safety ----
@@ -190,19 +237,38 @@ fn evolve_lifecycle_and_never_touches_harness() {
     let d = project();
     std::fs::create_dir_all(d.path().join("agents")).unwrap();
     std::fs::write(d.path().join("agents/dev.md"), "ORIGINAL").unwrap();
-    assert_eq!(run(d.path(), &["evolve", "propose", "--id", "fix-1", "--content", "x"]).code, 0);
-    assert!(json(&run(d.path(), &["evolve", "list", "--state", "pending"]).stdout)["proposals"]
-        .as_array()
-        .unwrap()
-        .contains(&serde_json::json!("fix-1")));
+    assert_eq!(
+        run(
+            d.path(),
+            &["evolve", "propose", "--id", "fix-1", "--content", "x"]
+        )
+        .code,
+        0
+    );
+    assert!(
+        json(&run(d.path(), &["evolve", "list", "--state", "pending"]).stdout)["proposals"]
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!("fix-1"))
+    );
     assert_eq!(run(d.path(), &["evolve", "apply", "--id", "fix-1"]).code, 0);
     // the harness file is untouched
-    assert_eq!(std::fs::read_to_string(d.path().join("agents/dev.md")).unwrap(), "ORIGINAL");
+    assert_eq!(
+        std::fs::read_to_string(d.path().join("agents/dev.md")).unwrap(),
+        "ORIGINAL"
+    );
     assert_eq!(run(d.path(), &["evolve", "apply", "--id", "nope"]).code, 2);
 }
 
 #[test]
 fn evolve_rejects_traversal_id() {
     let d = project();
-    assert_eq!(run(d.path(), &["evolve", "propose", "--id", "../../evil", "--content", "x"]).code, 2);
+    assert_eq!(
+        run(
+            d.path(),
+            &["evolve", "propose", "--id", "../../evil", "--content", "x"]
+        )
+        .code,
+        2
+    );
 }

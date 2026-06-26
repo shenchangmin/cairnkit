@@ -55,7 +55,9 @@ pub fn check(next_stage: &str, state: &State, config: &Config) -> GateResult {
 
     if let Some(produced) = stages::stage_artifact(current) {
         let path = config.run_dir(&state.run_id).join(produced);
-        let empty = std::fs::metadata(&path).map(|m| m.len() == 0).unwrap_or(true);
+        let empty = std::fs::metadata(&path)
+            .map(|m| m.len() == 0)
+            .unwrap_or(true);
         if empty {
             let rel = path
                 .strip_prefix(&config.root)

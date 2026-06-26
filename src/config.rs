@@ -73,8 +73,8 @@ pub fn load_config(root: &Path) -> Result<Config> {
         )));
     }
     let text = std::fs::read_to_string(&path)?;
-    let raw: RawConfig = serde_yaml::from_str(&text)
-        .map_err(|e| usage(format!("cairnkit.yaml is invalid: {e}")))?;
+    let raw: RawConfig =
+        serde_yaml::from_str(&text).map_err(|e| usage(format!("cairnkit.yaml is invalid: {e}")))?;
 
     let mut repos = raw.repos;
     if repos.is_empty() {
