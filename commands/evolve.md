@@ -12,8 +12,8 @@ it only writes a proposal for later human review.
 1. Replay the relevant workflow log/artifacts under `docs/workflows/<run-id>/` and do root-cause analysis.
 2. Simulate the improved behavior in context (what would the agent/rule have needed?).
 3. Write the analysis + concrete suggested change, then record it:
-   `python3 -m cairnkit --root . evolve propose --id <slug> --file <analysis.md>`
-4. `python3 -m cairnkit --root . notify --event arch_review --detail "evolve proposal <slug>"`.
+   `cairn --root . evolve propose --id <slug> --file <analysis.md>`
+4. `cairn --root . notify --event arch_review --detail "evolve proposal <slug>"`.
 
 The proposal lands in `docs/workflows/evolve-log/pending/`. Apply it only via `/evolve:apply`.
 

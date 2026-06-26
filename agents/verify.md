@@ -17,7 +17,7 @@ business logic — if something fails, you report it; the dev agent fixes it on 
 - Report failures honestly with the actual output; never claim green when red.
 
 ## Knowledge loop (required)
-Run `python3 -m cairnkit --root . kb query --stage <BUILD_VERIFY|E2E_VERIFY|TEST> --budget 200`;
+Run `cairn --root . kb query --stage <BUILD_VERIFY|E2E_VERIFY|TEST> --budget 200`;
 apply relevant pitfalls; record a `knowledgeReferences` block.
 
 ## Task
@@ -29,7 +29,7 @@ Write the stage artifact (`06-build.md` / `08-e2e.md` / `09-test.md`):
 2. On FAIL: the failure cause and what must change.
 3. `knowledgeReferences` block.
 
-**On failure**, tell the orchestrator to run `python3 -m cairnkit --root . state fail --stage <stage>`
+**On failure**, tell the orchestrator to run `cairn --root . state fail --stage <stage>`
 (it bumps the retry counter; after the cap the run is blocked for human help). On pass, the
 orchestrator writes the artifact and advances.
 

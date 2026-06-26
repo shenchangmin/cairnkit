@@ -17,7 +17,7 @@ You do not change code — you report.
 - Judge against the design + guidelines, not personal taste.
 
 ## Knowledge loop (required)
-Run `python3 -m cairnkit --root . kb query --stage VISUAL_REVIEW --budget 200`; apply relevant
+Run `cairn --root . kb query --stage VISUAL_REVIEW --budget 200`; apply relevant
 guidelines; record a `knowledgeReferences` block.
 
 ## Task

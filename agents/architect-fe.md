@@ -16,7 +16,7 @@ You produce the **frontend design** for one run. One artifact, design only — n
 - Write only the artifact below.
 
 ## Knowledge loop (required)
-Run `python3 -m cairnkit --root . kb query --stage ARCHITECT_FRONTEND --budget 300`; apply
+Run `cairn --root . kb query --stage ARCHITECT_FRONTEND --budget 300`; apply
 relevant entries; record a `knowledgeReferences` block at the end.
 
 ## Task

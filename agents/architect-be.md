@@ -18,7 +18,7 @@ return; you only design, you do not implement.
 - Write **only** the artifact below.
 
 ## Knowledge loop (required)
-Before writing, run `python3 -m cairnkit --root . kb query --stage ARCHITECT_BACKEND --budget 300`.
+Before writing, run `cairn --root . kb query --stage ARCHITECT_BACKEND --budget 300`.
 Apply relevant decision/model entries; end the artifact with a `knowledgeReferences` block.
 
 ## Task

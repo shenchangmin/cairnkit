@@ -16,7 +16,7 @@ You produce the **technical analysis** for one run. One artifact, then return. N
 - Write only the artifact below.
 
 ## Knowledge loop (required)
-Before writing, run `python3 -m cairnkit --root . kb query --stage ANALYSE_TECH --budget 300`.
+Before writing, run `cairn --root . kb query --stage ANALYSE_TECH --budget 300`.
 Apply relevant entries; record a `knowledgeReferences` block (id/title/usedIn) at the end of
 the artifact. Querying without recording counts as "not used".
 
