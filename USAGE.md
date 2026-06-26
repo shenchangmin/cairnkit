@@ -54,22 +54,22 @@ repos:
     path: .
 YAML
 
-$PY -m cairnkit --root . config show                         # is the project initialised?
-$PY -m cairnkit --root . state init --run-id 2026-06-25-x    # start a run
-$PY -m cairnkit --root . state show                          # stage=INIT
-$PY -m cairnkit --root . intent classify --text "fix a typo" # -> suggests "single"
-$PY -m cairnkit --root . state advance                       # INIT -> INTENT_GATE
-$PY -m cairnkit --root . state set-path-mode lite            # choose the route
-$PY -m cairnkit --root . state advance                       # -> ANALYSE_PRODUCT
+cairn --root . config show                         # is the project initialised?
+cairn --root . state init --run-id 2026-06-25-x    # start a run
+cairn --root . state show                          # stage=INIT
+cairn --root . intent classify --text "fix a typo" # -> suggests "single"
+cairn --root . state advance                       # INIT -> INTENT_GATE
+cairn --root . state set-path-mode lite            # choose the route
+cairn --root . state advance                       # -> ANALYSE_PRODUCT
 # a producing stage won't advance until its artifact exists (the hard gate):
-$PY -m cairnkit --root . state advance ; echo "exit=$?"      # exit=3 (gate refused)
+cairn --root . state advance ; echo "exit=$?"      # exit=3 (gate refused)
 mkdir -p docs/workflows/2026-06-25-x
 echo "# product analysis" > docs/workflows/2026-06-25-x/01-product.md
-$PY -m cairnkit --root . state advance                       # -> CLARIFY_PRODUCT (paused)
-$PY -m cairnkit --root . state resume                        # {"stage":"CLARIFY_PRODUCT","paused":true}
-$PY -m cairnkit --root . state advance ; echo "exit=$?"      # exit=3 (needs approval)
-$PY -m cairnkit --root . state approve-clarify
-$PY -m cairnkit --root . state advance                       # proceeds
+cairn --root . state advance                       # -> CLARIFY_PRODUCT (paused)
+cairn --root . state resume                        # {"stage":"CLARIFY_PRODUCT","paused":true}
+cairn --root . state advance ; echo "exit=$?"      # exit=3 (needs approval)
+cairn --root . state approve-clarify
+cairn --root . state advance                       # proceeds
 ```
 
 What you're verifying: **files are the only state** (kill your shell, `state show` resumes
@@ -79,11 +79,11 @@ exactly where you were), **gates are hard** (missing artifact → exit 3, no ski
 **Retry / block** (verify stages):
 
 ```bash
-$PY -m cairnkit --root . state fail --stage BUILD_VERIFY      # bump retry counter
+cairn --root . state fail --stage BUILD_VERIFY      # bump retry counter
 # after 5 failures the run is blocked:
-for i in 1 2 3 4 5; do $PY -m cairnkit --root . state fail --stage BUILD_VERIFY >/dev/null; done
-$PY -m cairnkit --root . state show | grep blocked            # blocked_reason set
-$PY -m cairnkit --root . state unblock                        # human clears it, retries reset
+for i in 1 2 3 4 5; do cairn --root . state fail --stage BUILD_VERIFY >/dev/null; done
+cairn --root . state show | grep blocked            # blocked_reason set
+cairn --root . state unblock                        # human clears it, retries reset
 ```
 
 ---
@@ -117,9 +117,9 @@ history: []
 Under deep OFFSET, MySQL scans and discards N rows; keyset (WHERE id > :last) stays O(limit).
 MD
 
-$PY -m cairnkit --root . kb validate docs/knowledge/tech-wiki/TK-001.md   # schema check
-$PY -m cairnkit --root . kb build-index                                   # generate the 3-level index
-$PY -m cairnkit --root . kb query --stage ARCHITECT_BACKEND --budget 300  # budget-bounded injection
+cairn --root . kb validate docs/knowledge/tech-wiki/TK-001.md   # schema check
+cairn --root . kb build-index                                   # generate the 3-level index
+cairn --root . kb query --stage ARCHITECT_BACKEND --budget 300  # budget-bounded injection
 ```
 
 The query output includes `injected_ids`, `dropped` (what didn't fit), and `over_budget`
@@ -136,11 +136,11 @@ and add a second entry with a different `applicable_phases` to see stage filteri
 mkdir -p docs/workflows/r1
 echo '{"knowledgeReferences": [{"id": "TK-001", "title": "...", "usedIn": "design step 2"}]}' \
   > docs/workflows/r1/05-implement.md
-$PY -m cairnkit --root . kb touch --from docs/workflows/r1     # writeback: ref_count++/last_referenced
-$PY -m cairnkit --root . lifecycle promote                    # draft -> verified (1 reference)
-$PY -m cairnkit --root . lifecycle decay                      # demote entries past their half-life
-$PY -m cairnkit --root . lint                                 # orphans/duplicates/conflicts/stale
-$PY -m cairnkit --root . lint --fix                           # mechanical fixes only (rebuild index)
+cairn --root . kb touch --from docs/workflows/r1     # writeback: ref_count++/last_referenced
+cairn --root . lifecycle promote                    # draft -> verified (1 reference)
+cairn --root . lifecycle decay                      # demote entries past their half-life
+cairn --root . lint                                 # orphans/duplicates/conflicts/stale
+cairn --root . lint --fix                           # mechanical fixes only (rebuild index)
 ```
 
 Lint never auto-resolves a content contradiction — it surfaces it for a maintainer.
@@ -166,9 +166,9 @@ knowledge_repo:
   local: /tmp/team-kb
 YAML
 cp docs/knowledge/tech-wiki/TK-001.md /tmp/team-kb/tech-wiki/   # (drop an entry in)
-$PY -m cairnkit --root . kbrepo push --message "add TK-001"      # commit (degrades gracefully w/o remote)
-$PY -m cairnkit --root . knowledge stats                         # health report, zero DB
-$PY -m cairnkit --root . kbrepo promote --id TK-001 --to L1      # L3 -> L1 (only L3 promotable; never overwrites)
+cairn --root . kbrepo push --message "add TK-001"      # commit (degrades gracefully w/o remote)
+cairn --root . knowledge stats                         # health report, zero DB
+cairn --root . kbrepo promote --id TK-001 --to L1      # L3 -> L1 (only L3 promotable; never overwrites)
 ```
 
 ---
@@ -177,10 +177,10 @@ $PY -m cairnkit --root . kbrepo promote --id TK-001 --to L1      # L3 -> L1 (onl
 
 ```bash
 cd /tmp/ck-demo
-$PY -m cairnkit --root . evolve propose --id slow-build --content "root cause + suggested rule change"
-$PY -m cairnkit --root . evolve list --state pending
-$PY -m cairnkit --root . evolve apply  --id slow-build      # records the decision (you edit the harness yourself)
-$PY -m cairnkit --root . evolve list --state applied
+cairn --root . evolve propose --id slow-build --content "root cause + suggested rule change"
+cairn --root . evolve list --state pending
+cairn --root . evolve apply  --id slow-build      # records the decision (you edit the harness yourself)
+cairn --root . evolve list --state applied
 ```
 
 The CLI **cannot** edit `agents/` or `rules/` — applying a change is a human edit you make
@@ -192,9 +192,9 @@ before recording the decision. That guarantee is structural (see `cairnkit/evolv
 
 ```bash
 cd /tmp/ck-demo
-$PY -m cairnkit --root . import init       # start the resumable 3-step pipeline
-$PY -m cairnkit --root . import advance    # doc-collect -> codebase-profile -> knowledge-build -> done
-$PY -m cairnkit --root . import show       # progress survives a crash (docs/knowledge-import/import-state.json)
+cairn --root . import init       # start the resumable 3-step pipeline
+cairn --root . import advance    # doc-collect -> codebase-profile -> knowledge-build -> done
+cairn --root . import show       # progress survives a crash (docs/knowledge-import/import-state.json)
 ```
 
 ---

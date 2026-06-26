@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Demo: drive a full cairnkit workflow INIT -> DONE through the CLI, in a throwaway project.
 # Usage:  ./scripts/demo-run.sh [full|lite|single]
-# Requires the package installed (e.g. in the repo venv): pip install -e .
+# Uses the installed `cairn` console script — no python3 command-name dependency.
 set -euo pipefail
 
 MODE="${1:-lite}"
-PY="${CAIRN_PY:-python3}"           # override with CAIRN_PY=/path/to/.venv/bin/python
+CK="${CAIRN:-cairn}"        # the installed console script
 DIR="$(mktemp -d)"
 RUN="demo-$(date +%s)"
 
@@ -18,8 +18,8 @@ repos:
     path: .
 YAML
 
-stage() { "$PY" -m cairnkit --root . state show | "$PY" -c "import sys,json;print(json.load(sys.stdin)['stage'])"; }
-paused() { "$PY" -m cairnkit --root . state resume | "$PY" -c "import sys,json;print(json.load(sys.stdin)['paused'])"; }
+stage()  { $CK --root . state show   | sed -E 's/.*"stage": *"([^"]+)".*/\1/'; }
+paused() { $CK --root . state resume | grep -q '"paused": true' && echo True || echo False; }
 artifact_for() { case "$1" in
   ANALYSE_PRODUCT) echo 01-product.md;; ANALYSE_TECH) echo 02-tech.md;; ARCHITECT_BACKEND) echo 03-arch.md;;
   ARCHITECT_FRONTEND) echo 04-arch-fe.md;; IMPLEMENT) echo 05-implement.md;; BUILD_VERIFY) echo 06-build.md;;
@@ -27,22 +27,23 @@ artifact_for() { case "$1" in
   *) echo "";; esac; }
 
 echo "== init =="
-"$PY" -m cairnkit --root . state init --run-id "$RUN" >/dev/null
-"$PY" -m cairnkit --root . config show
+$CK --root . state init --run-id "$RUN" >/dev/null
+$CK --root . config show
 
 echo "== drive INIT -> DONE (mode: $MODE) =="
 i=0
 while [ "$(stage)" != "DONE" ]; do
   s="$(stage)"
-  if [ "$s" = "INTENT_GATE" ]; then "$PY" -m cairnkit --root . state set-path-mode "$MODE" >/dev/null; fi
+  if [ "$s" = "INTENT_GATE" ]; then $CK --root . state set-path-mode "$MODE" >/dev/null; fi
   f="$(artifact_for "$s")"
   if [ -n "$f" ]; then mkdir -p "docs/workflows/$RUN"; echo "# $s artifact" > "docs/workflows/$RUN/$f"; fi
-  if [ "$(paused)" = "True" ]; then echo "   (CLARIFY pause -> approving) "; "$PY" -m cairnkit --root . state approve-clarify >/dev/null; fi
+  if [ "$(paused)" = "True" ]; then echo "   (CLARIFY pause -> approving) "; $CK --root . state approve-clarify >/dev/null; fi
   printf "  %-22s -> " "$s"
-  "$PY" -m cairnkit --root . state advance | "$PY" -c "import sys,json;print('now', json.load(sys.stdin)['stage'])"
+  $CK --root . state advance | sed -E 's/.*"stage": *"([^"]+)".*/now \1/'
   i=$((i+1)); [ $i -gt 30 ] && { echo "loop guard"; break; }
 done
 
 echo "== final =="
-"$PY" -m cairnkit --root . state show | "$PY" -c "import sys,json;d=json.load(sys.stdin);print('stage:',d['stage']);print('history:',' -> '.join(d['history']))"
+echo "stage: $(stage)"
+$CK --root . state show | sed -E 's/.*"history": \[([^]]*)\].*/history: \1/' | tr -d '"'
 echo "(scratch project at: $DIR)"
