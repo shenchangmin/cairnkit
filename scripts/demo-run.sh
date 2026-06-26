@@ -19,7 +19,7 @@ repos:
 YAML
 
 stage()  { $CK --root . state show   | sed -E 's/.*"stage": *"([^"]+)".*/\1/'; }
-paused() { $CK --root . state resume | grep -q '"paused": true' && echo True || echo False; }
+paused() { $CK --root . state resume | grep -q '"paused": *true' && echo True || echo False; }
 artifact_for() { case "$1" in
   ANALYSE_PRODUCT) echo 01-product.md;; ANALYSE_TECH) echo 02-tech.md;; ARCHITECT_BACKEND) echo 03-arch.md;;
   ARCHITECT_FRONTEND) echo 04-arch-fe.md;; IMPLEMENT) echo 05-implement.md;; BUILD_VERIFY) echo 06-build.md;;
@@ -45,5 +45,5 @@ done
 
 echo "== final =="
 echo "stage: $(stage)"
-$CK --root . state show | sed -E 's/.*"history": \[([^]]*)\].*/history: \1/' | tr -d '"'
+$CK --root . state show | sed -E 's/.*"history": *\[([^]]*)\].*/history: \1/' | tr -d '"'
 echo "(scratch project at: $DIR)"
