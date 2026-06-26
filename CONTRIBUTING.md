@@ -19,15 +19,15 @@ separate, private thing cairnkit feeds — that is never part of this project.)
 
 ## Development
 
-- Engine logic that is deterministic and verifiable lives in the Python package
-  (`cairnkit/`) and **must have tests** — target 80%+ coverage (`pytest`).
+- Engine logic that is deterministic and verifiable lives in the Rust core
+  (`src/`, the `cairn` binary) and **must have tests** (`cargo test`).
 - Fuzzy, model-driven logic lives in Markdown (`skills/`, `agents/`, `commands/`).
-- Run `pytest` before opening a PR.
+- Run `cargo test` before opening a PR.
 
 ## Workflow
 
 1. Open an issue describing the change first for anything non-trivial.
-2. Branch, implement with tests, ensure `pytest` is green.
+2. Branch, implement with tests, ensure `cargo test` is green.
 3. Open a PR with a clear description and rationale.
 4. Keep diffs surgical — match existing style.
 

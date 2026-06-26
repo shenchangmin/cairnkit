@@ -2,20 +2,19 @@
 
 There are **two tiers** you can exercise:
 
-- **Tier A — the deterministic engine (no Claude Code needed).** Everything in the `cairnkit`
-  Python package — the 16-stage state machine, knowledge model/index/query, lifecycle, the
-  cross-project Git knowledge repo, notifications, import, `/evolve` — runs from the CLI and is
-  fully testable on its own. This is most of the value and you can verify it right now.
+- **Tier A — the deterministic engine (no Claude Code needed).** The `cairn` binary — the
+  16-stage state machine, knowledge model/index/query, lifecycle, the cross-project Git
+  knowledge repo, notifications, import, `/evolve` — runs from the CLI and is fully testable on
+  its own. This is most of the value and you can verify it right now.
 - **Tier B — the full plugin inside Claude Code.** Installs the commands/agents/skill so the
   orchestrator dispatches role sub-agents end-to-end (`/flow-run`, `/flow-import`, `/evolve`).
   This validates the one thing the CLI can't: the model driving the loop.
 
-Below, `PY` is the project's venv interpreter:
+One-time build (needs the Rust toolchain — [rustup.rs](https://rustup.rs)):
 
 ```bash
-cd /Users/mac/work/cairnkit
-python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"   # one-time
-PY=$(pwd)/.venv/bin/python
+git clone https://github.com/shenchangmin/cairnkit && cd cairnkit
+cargo install --path .        # builds the `cairn` binary onto PATH
 ```
 
 ---
@@ -23,8 +22,7 @@ PY=$(pwd)/.venv/bin/python
 ## 0. Fastest confidence: run the test suite
 
 ```bash
-$PY -m pytest -q                                   # 165 tests
-$PY -m coverage run -m pytest && $PY -m coverage report   # ~94% on the Python core
+cargo test                    # unit + integration tests driving the real binary
 ```
 
 Green = the whole deterministic engine behaves to spec (state machine, gates, knowledge,

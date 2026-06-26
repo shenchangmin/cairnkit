@@ -1,65 +1,63 @@
 # Setup — use cairnkit in any project
 
-Two one-time installs, then a one-liner per project.
+cairnkit's deterministic core is a **single self-contained `cairn` binary** (Rust, zero runtime
+dependencies — no Python, no Node, no interpreter). Install the binary once, install the plugin
+once, then it's a one-liner per project.
 
-## 1. The `cairn` CLI (one-time, machine-wide) — ✅ already done on this machine
+## 1. The `cairn` binary (one-time, machine-wide)
 
-The plugin's commands shell out to the `cairn` console script, so it must be on your PATH.
-Installed in an isolated environment via pipx:
+The plugin's commands call `cairn`, so it must be on your PATH. Two ways to get it:
+
+**a) Download a prebuilt binary** (when releases are published): grab the `cairn` for your
+platform from the GitHub releases page and drop it somewhere on PATH (e.g. `~/.local/bin/`),
+then `chmod +x`.
+
+**b) Build from source** (needs the Rust toolchain — [rustup.rs](https://rustup.rs)):
 
 ```bash
-pipx install -e /Users/mac/work/cairnkit
-cairn --root . config show     # smoke test from any dir (a "cairnkit.yaml not found" error = it runs)
+git clone https://github.com/shenchangmin/cairnkit && cd cairnkit
+cargo install --path .          # builds + installs `cairn` to ~/.cargo/bin (on PATH)
+cairn --version                 # smoke test from any directory
 ```
 
-> Why pipx and not `pip install`: this machine's `python3` is Homebrew-managed (PEP 668), so a
-> plain `pip install` is blocked. pipx gives a global `cairn` without touching system Python.
-> `-e` (editable) means `cairn` tracks the repo, so engine updates need no reinstall.
-> To update later: `pipx reinstall cairnkit`.
+That's the whole runtime requirement — a single ~1.6 MB executable. No `pip`, no `python3`,
+no environment to manage. Other machines just need the binary on PATH (or `cargo install`).
 
 ## 2. The Claude Code plugin (one-time)
 
-This loads the slash commands (`/flow-run`, `/team-init`, …), the role agents, and the
-orchestrator skill into Claude Code.
-
+Loads the slash commands (`/flow-run`, `/team-init`, …), role agents, and orchestrator skill.
 In a Claude Code session:
 
 ```
-/plugin marketplace add /Users/mac/work/cairnkit
+/plugin marketplace add /path/to/cairnkit
 /plugin install cairnkit@cairnkit
 ```
 
-(or use the interactive `/plugin` menu → *Add marketplace* → point at `/Users/mac/work/cairnkit`
-→ *Install* `cairnkit`.) Reload Claude Code if it asks. Verify the commands appear by typing `/`
-and looking for `flow-run`, `team-init`, etc.
+(or the interactive `/plugin` menu → *Add marketplace* → point at the cairnkit repo → *Install*.)
+Reload if asked; type `/` and confirm `flow-run`, `team-init`, etc. appear.
 
-## 3. Per project (each new repo you want to use it on)
-
-Open the project in Claude Code, then:
+## 3. Per project (each repo you use it on)
 
 ```
-/team-init            # generates cairnkit.yaml (single-repo default)
+/team-init                       # generates cairnkit.yaml (single-repo default)
 /flow-run <your feature request>
 ```
 
-That's it. The orchestrator reads STATE, dispatches the right role agent per stage, writes each
-artifact, and advances — pausing at CLARIFY for your approval. Use `/flow-status` anytime,
-`/flow-import` to seed knowledge from an existing codebase, `/knowledge` for stats/lint/sync,
-and `/evolve` + `/evolve:apply` to improve the harness itself (human-gated).
+The orchestrator reads STATE, dispatches the right role agent per stage, writes each artifact,
+and advances — pausing at CLARIFY for your approval. Other commands: `/flow-status`,
+`/flow-import`, `/knowledge`, `/evolve` + `/evolve:apply`.
 
 ### Optional: share knowledge across projects (the moat)
 
-To let knowledge precipitate across all your projects, point each project's `cairnkit.yaml` at a
-shared knowledge Git repo:
+Point each project's `cairnkit.yaml` at a shared knowledge Git repo so knowledge precipitates
+across all your projects:
 
 ```yaml
 knowledge_repo:
   local: ~/.cairnkit/team-knowledge   # a local clone of an independent git repo
 ```
 
-Create that repo once (`git init` + `cairn`'s repo skeleton), and `/flow-run` will pull on INIT
-and push verified knowledge on ARCHIVE. Without it, knowledge stays project-local under
-`docs/knowledge/`.
+Without it, knowledge stays project-local under `docs/knowledge/`.
 
 ### Notifications (optional)
 
