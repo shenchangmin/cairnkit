@@ -9,7 +9,11 @@ pub enum CairnError {
     /// Bad arguments, illegal enum, missing/invalid config, illegal state op. -> 2
     Usage(String),
     /// Admission gate refused the transition. -> 3
-    Gate { message: String, missing: Vec<String> },
+    Gate {
+        message: String,
+        #[allow(dead_code)] // carried for parity with the gate result; CLI prints message+code
+        missing: Vec<String>,
+    },
     /// STATE.yaml unreadable / missing required fields / unknown enum. -> 4
     StateCorrupt(String),
 }

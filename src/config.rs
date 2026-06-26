@@ -4,7 +4,7 @@
 //! Files are the single source of truth; writes are atomic (temp + rename) and the STATE
 //! field order is the struct declaration order (stable diffs).
 
-use crate::errors::{corrupt, usage, CairnError, Result};
+use crate::errors::{corrupt, usage, Result};
 use crate::stages;
 use chrono::Local;
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,7 @@ pub struct Config {
     pub repos: Vec<Repo>,
     pub root: PathBuf,
     pub knowledge_root: PathBuf,
+    #[allow(dead_code)] // parsed for completeness; cloning uses .local
     pub knowledge_repo_url: Option<String>,
     pub knowledge_repo_local: Option<PathBuf>,
     pub notify_webhook_env: Option<String>,
@@ -197,6 +198,3 @@ impl State {
         self
     }
 }
-
-#[allow(dead_code)]
-fn _unused(_: CairnError) {}
