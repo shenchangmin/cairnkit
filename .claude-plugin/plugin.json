@@ -2,7 +2,7 @@
   "name": "cairnkit",
   "version": "0.1.0",
   "description": "A knowledge-precipitation harness for Claude Code — a disciplined multi-stage delivery workflow that captures durable, verified knowledge on every run. The workflow is the pipe; knowledge is the moat.",
-  "author": { "name": "cairnkit authors" },
+  "author": { "name": "shenchangmin" },
   "license": "MIT",
   "homepage": "https://github.com/shenchangmin/cairnkit",
   "keywords": ["workflow", "orchestration", "knowledge-base", "agents", "state-machine"]

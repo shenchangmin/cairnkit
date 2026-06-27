@@ -3,6 +3,7 @@ name = "cairnkit"
 version = "0.1.0"
 edition = "2021"
 description = "A knowledge-precipitation harness for Claude Code — the deterministic core (Rust, single binary, zero runtime deps)."
+authors = ["shenchangmin"]
 license = "MIT"
 
 [[bin]]

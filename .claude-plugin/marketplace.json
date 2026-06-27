@@ -1,6 +1,6 @@
 {
   "name": "cairnkit",
-  "owner": { "name": "cairnkit authors" },
+  "owner": { "name": "shenchangmin" },
   "plugins": [
     {
       "name": "cairnkit",
