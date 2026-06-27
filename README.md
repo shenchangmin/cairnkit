@@ -65,21 +65,56 @@ team-knowledge.git     ← your team's knowledge · PRIVATE, never published
 Open-sourcing the engine costs you nothing strategically — by design, the moat is the
 knowledge, not the harness.
 
+## Install
+
+cairnkit is a single `cairn` binary (Rust, zero runtime deps) plus a Claude Code plugin.
+
+**1. The `cairn` binary** (needs the [Rust toolchain](https://rustup.rs)):
+
+```bash
+git clone https://github.com/shenchangmin/cairnkit && cd cairnkit
+cargo install --path .          # builds `cairn` onto your PATH
+```
+
+**2. The Claude Code plugin** — in a Claude Code session:
+
+```
+/plugin marketplace add /path/to/cairnkit
+/plugin install cairnkit@cairnkit
+```
+
+Full setup (optional shared knowledge repo + notifications) is in [SETUP.md](SETUP.md).
+
+## Quick start
+
+In any project:
+
+```
+/cairnkit:team-init                          # once per project — generates cairnkit.yaml
+/cairnkit:flow-run <your feature request>    # runs the pipeline, pausing at each CLARIFY for you
+```
+
+The orchestrator dispatches a role agent per stage, writes each artifact, advances only when the
+gate passes, and archives what it learned. You can also drive the engine directly via the CLI
+without Claude Code — see [USAGE.md](USAGE.md).
+
 ## Status
 
-🟢 **v1 engine implemented.** All staged batches are complete and merged:
+🟢 **v1 released — open source.** All staged modules are complete:
 
-- **Orchestration (M2/M3)** — 16-stage file-as-state-machine with IntentGate routing
-  (full/lite/single), CLARIFY async pauses, verify-stage retry/block, and 8 role agents.
-- **Knowledge moat (M4–M7)** — entry model + schema, 3-level progressive index + budget
-  query, maturity lifecycle (promote/decay/lint + reference closed loop), and a cross-project
-  Git knowledge repo (pull/push, L3→L1/L2 promotion, hybrid contribution, conflict staging).
-- **Feeding & reach (M8/M10)** — cold-start `/flow-import` pipeline and pluggable notifications.
-- **Self-evolution (M9)** — `/evolve` with a *structural* never-auto-apply guarantee.
+- **Orchestration** — 16-stage file-as-state-machine with IntentGate routing
+  (full/lite/single), CLARIFY async pauses, verify-stage retry/block, and 11 role agents.
+- **Knowledge moat** — entry model + schema, 3-level progressive index + budget query,
+  maturity lifecycle (promote/decay/lint + reference closed loop), and a cross-project Git
+  knowledge repo (pull/push, L3→L1/L2 promotion, hybrid contribution, conflict staging).
+- **Feeding & reach** — cold-start `/flow-import` pipeline and pluggable notifications.
+- **Self-evolution** — `/evolve` with a *structural* never-auto-apply guarantee.
 
 The deterministic core is a **single `cairn` binary** (Rust, zero runtime dependencies — no
-Python/Node/interpreter), test-covered and runs independently of Claude Code. Remaining: live
-in-Claude-Code validation of the orchestrator dispatching role sub-agents end-to-end.
+Python/Node/interpreter), with unit + integration tests, running independently of Claude Code.
+
+> Heads-up: end-to-end orchestration (the model dispatching role sub-agents inside Claude Code)
+> is best validated by running a real `/flow-run`; the CLI engine itself is fully tested.
 
 ## License & credits
 
