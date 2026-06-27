@@ -26,6 +26,9 @@ separate, private thing cairnkit feeds — that is never part of this project.)
 
 ## Workflow
 
+`main` is protected: **all changes land via a pull request.** Branch → push → open a
+PR → CI must pass → merge. No direct commits to `main` — this applies to maintainers too.
+
 1. Open an issue describing the change first for anything non-trivial.
 2. Branch, implement with tests, ensure `cargo test` is green.
 3. Open a PR with a clear description and rationale.
