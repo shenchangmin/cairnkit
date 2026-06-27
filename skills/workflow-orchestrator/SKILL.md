@@ -53,7 +53,14 @@ Return codes: `0` ok · `2` usage · `3` gate refused · `4` STATE corrupt. **Ne
 2. **Blocked** (`blocked_reason` set): stop, surface it to the user; after they fix the cause, run `state unblock`.
 3. **Paused** (`pending_clarify` set, a CLARIFY stage): stop and present the artifact for approval. On approval run `state approve-clarify`, then continue.
 4. **INIT** → run `kb build-index` (so the knowledge base is queryable), then `state advance`.
-5. **INTENT_GATE** → `intent classify --text "<request>"`, set the route with `state set-path-mode <mode>` (you may override the suggestion), then `state advance`.
+5. **INTENT_GATE** → **you** are the classifier. Read the request and pick the route by judgment (language-independent), then `state set-path-mode <mode>` and `state advance`. `intent classify --text "<request>"` is only an optional fallback hint for headless runs, not the decision.
+
+   Criteria:
+   - `single` — single-point / config / governance / docs / a line or two, no analysis or design. *Examples:* fix an error message, enable branch protection, add one test, edit README.
+   - `lite` — backend feature, no UI. *Examples:* add an endpoint, change business logic, fix a bug.
+   - `full` — feature with frontend/UI. *Examples:* a new page, an interactive component.
+
+   When unsure, route higher (`full` is safer than skipping stages).
 6. **A role-agent stage** → dispatch the mapped agent as a Task sub-agent (context firewall — it queries the KB, writes its artifact, records `knowledgeReferences`, and returns a one-line summary). Then `state advance`.
    - For verify stages: if the agent reports FAIL, run `state fail --stage <stage>` and re-dispatch `dev` to fix, then re-verify. After the retry cap the run blocks (go to step 2).
 7. **CLARIFY stages** are entered automatically; `state advance` into one pauses the run (step 3).
