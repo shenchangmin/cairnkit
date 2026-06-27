@@ -7,6 +7,16 @@ All notable changes to cairnkit are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Unit tests for the knowledge modules** — `query`, `index`, `extract_gate`, `lint`, `refs`, and
+  `schema` (the moat's core, previously without `#[cfg(test)]` coverage) each gain focused
+  in-module unit tests (~19): the two never-silent budget signals asserted separately (`dropped`
+  for follow-on entries cut for budget, `over_budget` for an oversized top entry), every
+  extract-gate rejection reason, and every schema cross-field rule (tech-without-domain,
+  biz-with-domain, enums). Each verified to have teeth via mutation.
+- **`scripts/demo-knowledge-loop.sh`** — a runnable, watchable showcase that closes the knowledge
+  loop against the real binary (seed in run 1 → `build-index` → run 2's query returns it), exiting
+  non-zero if the loop fails to close. Resolves the in-checkout `target/` binary before PATH (and
+  builds if absent), so it works on a fresh clone.
 - **Knowledge-loop end-to-end proof tests** — `tests/cli.rs` now drives the real `cairn` binary
   through the full moat loop offline (seed → `build-index` → query → `extract` via the gate →
   re-index → a second query that returns the just-extracted entry), proving knowledge *compounds*
