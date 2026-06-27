@@ -230,6 +230,361 @@ fn reference_loop_drives_promotion() {
     );
 }
 
+// ---- knowledge loop: end-to-end proof ----
+//
+// These three tests prove the knowledge loop closes using ONLY the real `cairn`
+// binary (`run()` -> subprocess) + `tempfile::TempDir` + `std::fs`. No Claude Code,
+// no network, no Git remote, no agent invocation (acceptance checkbox 10, by construction).
+
+/// Write a valid tech seed entry on `applicable_phases: [ARCHITECT_BACKEND]`.
+/// `class` ∈ {"point","causal","spatiotemporal"} drives query sort rank
+/// (causal > point), so callers control which id surfaces first. Parameterized
+/// variant of `kb_entry` (which hardcodes TK-001); `kb_entry` stays untouched.
+fn seed_entry(root: &Path, id: &str, class: &str) -> PathBuf {
+    let p = root.join(format!("kb/tech-wiki/{id}.md"));
+    std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+    std::fs::write(
+        &p,
+        format!(
+            "---\nid: {id}\ntitle: Pagination\ncategory: tech\ndomain: null\ntype: decision\nguideline_polarity: null\nmaturity: draft\nknowledge_class: {class}\nlayer: L1\ntags: [mysql]\napplicable_phases: [ARCHITECT_BACKEND]\nevidence: {{contributors: [you], sources: [], projects: [], last_referenced: null, ref_count: 0}}\nhistory: []\n---\nKeyset beats OFFSET under deep paging because it avoids scanning and discarding rows here.\n"
+        ),
+    )
+    .unwrap();
+    p
+}
+
+/// Write `knowledge-candidates.json` (exact filename from
+/// `extract_gate.rs::CANDIDATES_FILE`) into `run_dir` as a JSON array.
+/// Creates `run_dir` if absent.
+fn write_candidates(run_dir: &Path, candidates: serde_json::Value) {
+    std::fs::create_dir_all(run_dir).unwrap();
+    std::fs::write(
+        run_dir.join("knowledge-candidates.json"),
+        serde_json::to_string(&candidates).unwrap(),
+    )
+    .unwrap();
+}
+
+/// One gate-passing candidate: id TK-100, type pitfall, knowledge_class causal,
+/// applicable_phases [IMPLEMENT] (a phase the first query returns empty for),
+/// body >= 80 chars after trim.
+fn candidate_pass() -> serde_json::Value {
+    serde_json::json!({
+        "id": "TK-100",
+        "title": "Cache stampede guard",
+        "category": "tech",
+        "type": "pitfall",
+        "knowledge_class": "causal",
+        "layer": "L1",
+        "applicable_phases": ["IMPLEMENT"],
+        "tags": ["cache"],
+        "body": "Use a single-flight lock or request coalescing so a cache miss does not let every concurrent caller hit the database at once."
+    })
+}
+
+/// Two gate-failing candidates covering >= 2 distinct reasons:
+///  - title "Too shallow": body too short -> "insufficient depth (body too short)".
+///  - title "Bad type": invalid type + empty applicable_phases ->
+///    "missing/invalid type" AND "not transferable (no applicable_phases)".
+fn candidates_fail() -> Vec<serde_json::Value> {
+    vec![
+        serde_json::json!({
+            "id": "TK-101",
+            "title": "Too shallow",
+            "category": "tech",
+            "type": "pitfall",
+            "knowledge_class": "causal",
+            "layer": "L1",
+            "applicable_phases": ["IMPLEMENT"],
+            "tags": [],
+            "body": "too short"
+        }),
+        serde_json::json!({
+            "id": "TK-102",
+            "title": "Bad type",
+            "category": "tech",
+            "type": "not-a-real-type",
+            "knowledge_class": "causal",
+            "layer": "L1",
+            "applicable_phases": [],
+            "tags": [],
+            "body": "This body is comfortably longer than the eighty character minimum so only the type and phases fail."
+        }),
+    ]
+}
+
+#[test]
+fn knowledge_loop_closes() {
+    let d = project();
+    let root = d.path();
+
+    // [R1] seed indexed: validate (exit 0) + build-index (total == 1).
+    let seed = seed_entry(root, "TK-001", "causal");
+    assert_eq!(
+        run(root, &["kb", "validate", seed.to_str().unwrap()]).code,
+        0
+    );
+    assert_eq!(json(&run(root, &["kb", "build-index"]).stdout)["total"], 1);
+
+    // [R2 baseline] IMPLEMENT phase returns nothing yet — capture for the R6 delta.
+    let first = json(
+        &run(
+            root,
+            &["kb", "query", "--stage", "IMPLEMENT", "--budget", "300"],
+        )
+        .stdout,
+    );
+    let first_ids: Vec<String> = first["injected_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
+    assert!(
+        !first_ids.iter().any(|x| x == "TK-100"),
+        "TK-100 must not pre-exist for the loop-closure delta"
+    );
+
+    // [R2] seed retrievable on its own phase.
+    let q_arch = json(
+        &run(
+            root,
+            &[
+                "kb",
+                "query",
+                "--stage",
+                "ARCHITECT_BACKEND",
+                "--budget",
+                "300",
+            ],
+        )
+        .stdout,
+    );
+    assert!(q_arch["injected_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "TK-001"));
+
+    // [R4] extract: good candidate written, bad candidates rejected with reasons.
+    let run_dir = root.join("docs/workflows/r1");
+    let mut candidates = vec![candidate_pass()];
+    candidates.extend(candidates_fail());
+    write_candidates(&run_dir, serde_json::Value::Array(candidates));
+    let ex = json(
+        &run(
+            root,
+            &["kb", "extract", "--from", run_dir.to_str().unwrap()],
+        )
+        .stdout,
+    );
+    assert!(ex["written"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "TK-100"));
+
+    // [R4 draft] extracted entry lands on disk as a draft.
+    let extracted = std::fs::read_to_string(root.join("kb/tech-wiki/TK-100.md")).unwrap();
+    assert!(extracted.contains("maturity: draft"));
+
+    // [D4] extract does NOT auto-index — re-build before the loop-closing query.
+    assert_eq!(json(&run(root, &["kb", "build-index"]).stdout)["total"], 2);
+
+    // [R6] loop closes: TK-100 now visible on IMPLEMENT, and was NOT in first_ids.
+    let second = json(
+        &run(
+            root,
+            &["kb", "query", "--stage", "IMPLEMENT", "--budget", "300"],
+        )
+        .stdout,
+    );
+    let second_ids = second["injected_ids"].as_array().unwrap();
+    assert!(
+        second_ids.iter().any(|x| x == "TK-100"),
+        "extracted id must surface on its phase after re-index"
+    );
+    assert!(
+        !first_ids.iter().any(|x| x == "TK-100"),
+        "loop closes only if TK-100 was newly visible (delta), not pre-existing"
+    );
+
+    // [R5] refs drive promotion: touch advances the seed, then promote.
+    std::fs::write(
+        run_dir.join("03-arch.md"),
+        r#"{"knowledgeReferences":[{"id":"TK-001"}]}"#,
+    )
+    .unwrap();
+    let touch = json(&run(root, &["kb", "touch", "--from", run_dir.to_str().unwrap()]).stdout);
+    assert!(touch["updated"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "TK-001"));
+    let promote = json(&run(root, &["lifecycle", "promote"]).stdout);
+    assert!(promote["promoted"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "TK-001"));
+}
+
+#[test]
+fn budget_never_truncates_silently() {
+    let d = project();
+    let root = d.path();
+
+    // Two same-phase entries; causal sorts before point, so TK-002 is the one cut.
+    seed_entry(root, "TK-001", "causal");
+    seed_entry(root, "TK-002", "point");
+    assert_eq!(json(&run(root, &["kb", "build-index"]).stdout)["total"], 2);
+
+    // Under-budget: something was cut -> `dropped` non-empty and names what was dropped.
+    let tight = json(
+        &run(
+            root,
+            &[
+                "kb",
+                "query",
+                "--stage",
+                "ARCHITECT_BACKEND",
+                "--budget",
+                "2",
+            ],
+        )
+        .stdout,
+    );
+    let dropped = tight["dropped"].as_array().unwrap();
+    assert!(!dropped.is_empty(), "truncation must never be silent");
+    assert!(
+        dropped.iter().any(|x| x["id"] == "TK-002"),
+        "dropped must name the cut entry"
+    );
+    assert_eq!(tight["injected_ids"].as_array().unwrap().len(), 1);
+
+    // Sufficient budget: nothing dropped, not over budget, both surface (negative control).
+    let wide = json(
+        &run(
+            root,
+            &[
+                "kb",
+                "query",
+                "--stage",
+                "ARCHITECT_BACKEND",
+                "--budget",
+                "100",
+            ],
+        )
+        .stdout,
+    );
+    assert_eq!(wide["over_budget"], false);
+    assert!(wide["dropped"].as_array().unwrap().is_empty());
+    assert_eq!(wide["injected_ids"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn over_budget_flags_oversized_top_entry() {
+    let d = project();
+    let root = d.path();
+
+    // Single entry whose serialized block is many lines, queried with a budget
+    // (1 line) guaranteed smaller than that one block.
+    seed_entry(root, "TK-001", "causal");
+    assert_eq!(json(&run(root, &["kb", "build-index"]).stdout)["total"], 1);
+
+    let res = json(
+        &run(
+            root,
+            &[
+                "kb",
+                "query",
+                "--stage",
+                "ARCHITECT_BACKEND",
+                "--budget",
+                "1",
+            ],
+        )
+        .stdout,
+    );
+
+    // The single top-ranked entry alone exceeds budget: flagged, never silently omitted.
+    assert_eq!(
+        res["over_budget"], true,
+        "an oversized sole entry must be flagged over_budget"
+    );
+    assert!(
+        res["injected_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x == "TK-001"),
+        "the oversized entry is still included, not silently dropped"
+    );
+    assert!(
+        res["dropped"].as_array().unwrap().is_empty(),
+        "no second entry exists, so nothing is dropped"
+    );
+}
+
+#[test]
+fn extract_gate_rejects_with_reasons() {
+    let d = project();
+    let root = d.path();
+    let run_dir = root.join("docs/workflows/r1");
+
+    let mut candidates = vec![candidate_pass()];
+    candidates.extend(candidates_fail());
+    write_candidates(&run_dir, serde_json::Value::Array(candidates));
+
+    let ex = json(
+        &run(
+            root,
+            &["kb", "extract", "--from", run_dir.to_str().unwrap()],
+        )
+        .stdout,
+    );
+
+    // Good candidate written.
+    assert!(ex["written"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "TK-100"));
+
+    // Bad candidates rejected, keyed by title, with non-empty reasons (substring-matched).
+    let rejected = ex["rejected"].as_array().unwrap();
+    let shallow = rejected
+        .iter()
+        .find(|x| x["title"] == "Too shallow")
+        .expect("'Too shallow' must be rejected");
+    let shallow_reasons = shallow["reasons"].as_array().unwrap();
+    assert!(!shallow_reasons.is_empty());
+    assert!(shallow_reasons
+        .iter()
+        .any(|r| r.as_str().unwrap().contains("insufficient depth")));
+
+    let bad_type = rejected
+        .iter()
+        .find(|x| x["title"] == "Bad type")
+        .expect("'Bad type' must be rejected");
+    let bad_type_reasons: Vec<&str> = bad_type["reasons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r.as_str().unwrap())
+        .collect();
+    assert!(bad_type_reasons
+        .iter()
+        .any(|r| r.contains("missing/invalid type")));
+    assert!(bad_type_reasons
+        .iter()
+        .any(|r| r.contains("no applicable_phases")));
+
+    // Bad candidates were never written to disk.
+    assert!(!root.join("kb/tech-wiki/TK-101.md").exists());
+    assert!(!root.join("kb/tech-wiki/TK-102.md").exists());
+}
+
 // ---- evolve safety ----
 
 #[test]
