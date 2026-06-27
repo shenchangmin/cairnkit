@@ -7,6 +7,12 @@ All notable changes to cairnkit are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **`cairn state new --run-id <id>`** — start a fresh run without the manual STATE-file shuffle:
+  it archives the existing `.cairnkit/STATE.yaml` to a timestamped sibling (never destroying the
+  only copy), then initializes the new run. Refuses an in-progress run without `--force`.
+- **`tooling` path mode** — `cairn state set-path-mode tooling` runs `lite` minus `E2E_VERIFY`, for
+  test-only / library / tooling deliverables that have no runnable app surface to E2E. `full`,
+  `lite`, and `single` are unchanged.
 - **Unit tests for the knowledge modules** — `query`, `index`, `extract_gate`, `lint`, `refs`, and
   `schema` (the moat's core, previously without `#[cfg(test)]` coverage) each gain focused
   in-module unit tests (~19): the two never-silent budget signals asserted separately (`dropped`
@@ -31,6 +37,16 @@ All notable changes to cairnkit are documented here. The format is based on
   `.codex/agents/<role>.toml` with their own reasoning effort / sandbox / `developer_instructions`),
   dispatched by the parent orchestrator. Adds `scripts/sync-to-codex.sh` (merge-safe projection
   into `~/.codex/`), `.codex/` baseline + the 11 role agents, and `docs/ADAPTERS.md`.
+
+### Fixed
+- **`cairn kb touch` now reads the YAML/markdown `knowledgeReferences` blocks that role agents
+  actually emit** — previously it only parsed a JSON form, so reference writeback silently missed
+  real references. The extractor is block-scoped and structural (collects from `id:` lines and
+  `TK-`/`BK-` bullets within the block; deliberately ignores `created:`/`wroteBack:`/prose to avoid
+  over-matching), and the legacy JSON form still works.
+- **`scripts/demo-run.sh` resolves the in-checkout `target/{release,debug}` binary before PATH**
+  (and builds it if absent), so the demo works on a fresh clone instead of silently using a stale
+  or missing PATH `cairn`. Mirrors the fix already in `scripts/demo-knowledge-loop.sh`.
 
 ### Changed
 - **IntentGate classification moved to the model layer.** The Rust keyword heuristic mis-routed
