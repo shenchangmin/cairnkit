@@ -1,6 +1,6 @@
 # cairnkit
 
-> A knowledge-precipitation harness for Claude Code.
+> A knowledge-precipitation harness for Claude Code and Codex.
 > **The workflow is the pipe; knowledge is the moat.**
 
 A *cairn* is a pile of stones that travelers add to, one by one, to mark the trail
@@ -33,10 +33,10 @@ INIT (pull knowledge)  →  multi-stage delivery  →  ARCHIVE (extract knowledg
        └──────────────── shared Git knowledge repo ────────────────┘
 ```
 
-- **Delivery harness** — a Claude Code plugin: a 16-stage orchestrator + role subagents
-  (Product / Tech / Architect / Dev / Verify / Visual / Archiver). State lives entirely
-  in files — *the file system is the state machine* — so any run is resumable from any
-  device, with no database and no server.
+- **Delivery harness** — a Claude Code plugin **or** a Codex `AGENTS.md` harness over one shared
+  engine + content: a 16-stage orchestrator + role agents (Product / Tech / Architect / Dev /
+  Verify / Visual / Archiver). State lives entirely in files — *the file system is the state
+  machine* — so any run is resumable from any device, with no database and no server.
 - **Knowledge model** — every entry is classified on three orthogonal axes
   (**storage layer** `personal/team/tech/biz/project` × **type** `model/decision/guideline/pitfall/process`
   × **maturity** `draft→verified→proven`) plus a knowledge-class (`point/causal/spatiotemporal`).
@@ -67,7 +67,9 @@ knowledge, not the harness.
 
 ## Install
 
-cairnkit is a single `cairn` binary (Rust, zero runtime deps) plus a Claude Code plugin.
+cairnkit is a single `cairn` binary (Rust, zero runtime deps) plus a harness adapter — a Claude
+Code plugin and/or a Codex `AGENTS.md` form (both over the same engine + content; see
+[docs/ADAPTERS.md](docs/ADAPTERS.md)).
 
 **1. The `cairn` binary** (needs the [Rust toolchain](https://rustup.rs)):
 
@@ -117,6 +119,8 @@ without Claude Code — see [USAGE.md](USAGE.md).
   knowledge repo (pull/push, L3→L1/L2 promotion, hybrid contribution, conflict staging).
 - **Feeding & reach** — cold-start `/flow-import` pipeline and pluggable notifications.
 - **Self-evolution** — `/evolve` with a *structural* never-auto-apply guarantee.
+- **Harness adapters** — Claude Code and Codex forms over one shared engine + content
+  ([docs/ADAPTERS.md](docs/ADAPTERS.md)); adding a harness is an adapter, not a fork.
 
 The deterministic core is a **single `cairn` binary** (Rust, zero runtime dependencies — no
 Python/Node/interpreter), with unit + integration tests, running independently of Claude Code.

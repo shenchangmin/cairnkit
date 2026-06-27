@@ -4,6 +4,24 @@ All notable changes to cairnkit are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Codex harness adapter** — cairnkit now ships a Codex (`AGENTS.md`) form alongside Claude Code.
+  Reorganized as **one shared engine (`cairn`) + shared role/command content + per-harness
+  adapters** (the everything-claude-code pattern): the same `agents/*.md` role files and the
+  `cairn` engine drive both harnesses; only the driver differs (Claude Code = Task sub-agents,
+  Codex = one agent playing roles sequentially via `AGENTS.md`). Adds `scripts/sync-to-codex.sh`
+  (merge-safe projection into `~/.codex/`), `.codex/` baseline, and `docs/ADAPTERS.md`.
+
+### Changed
+- **IntentGate classification moved to the model layer.** The Rust keyword heuristic mis-routed
+  non-English / governance requests; classification is now the orchestrator's (model's) job, with
+  the heuristic demoted to a safe fallback that defaults to `full` when unsure.
+- **`main` is PR-protected** — all changes land via pull request, maintainers included.
+- **Release CI**: the x86_64 macOS binary is built on an Apple Silicon runner (the macos-13
+  Intel runner is being retired and was hanging).
+
 ## [0.1.0] — 2026-06-27
 
 First public release. The deterministic core is a single `cairn` binary (Rust, zero runtime
