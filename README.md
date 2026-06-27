@@ -108,6 +108,15 @@ The orchestrator dispatches a role agent per stage, writes each artifact, advanc
 gate passes, and archives what it learned. You can also drive the engine directly via the CLI
 without Claude Code — see [USAGE.md](USAGE.md).
 
+**See the moat compound in ~30s** (no Claude Code needed):
+
+```bash
+cargo build && ./scripts/demo-knowledge-loop.sh
+```
+
+It seeds knowledge in "run 1", then shows "run 2" querying it back — the loop closing, live against
+the real binary. Exits non-zero if the knowledge isn't retrievable.
+
 ## Status
 
 🟢 **v1 released — open source.** All staged modules are complete:
@@ -127,8 +136,10 @@ without Claude Code — see [USAGE.md](USAGE.md).
 The deterministic core is a **single `cairn` binary** (Rust, zero runtime dependencies — no
 Python/Node/interpreter), with unit + integration tests, running independently of Claude Code.
 The **knowledge loop is proven end-to-end**: an integration test drives the real binary through
-seed → extract → re-query and asserts the just-precipitated knowledge is retrievable, so the
-"knowledge compounds across runs" claim is guarded by CI, not just asserted.
+seed → extract → re-query and asserts the just-precipitated knowledge is retrievable, and the six
+core knowledge modules (query / index / extract-gate / lint / refs / schema) carry focused unit
+tests — so the "knowledge compounds across runs" claim is guarded by CI, not just asserted.
+A runnable demo, [`scripts/demo-knowledge-loop.sh`](scripts/demo-knowledge-loop.sh), shows it live.
 
 > Heads-up: end-to-end orchestration (the model dispatching role sub-agents inside Claude Code)
 > is best validated by running a real `/flow-run`; the CLI engine itself is fully tested.

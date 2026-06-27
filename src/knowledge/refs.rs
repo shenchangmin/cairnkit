@@ -107,3 +107,99 @@ pub fn touch(kb_root: &Path, run_dir: &Path, project: &str, today: Option<&str>)
     let unknown: Vec<&String> = counts.keys().filter(|k| !updated.contains(k)).collect();
     json!({"referenced": referenced, "updated": updated, "unknown": unknown})
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::knowledge::model::{load_entry, Entry, Evidence};
+    use tempfile::tempdir;
+
+    /// Seed a draft entry on disk so it has a `path` (touch only updates path-bearing entries).
+    fn seed_entry(kb_root: &Path, id: &str) {
+        let entry = Entry {
+            id: id.to_string(),
+            title: format!("title for {id}"),
+            category: "tech".to_string(),
+            domain: None,
+            kind: "decision".to_string(),
+            guideline_polarity: None,
+            maturity: "draft".to_string(),
+            knowledge_class: "point".to_string(),
+            layer: "L1".to_string(),
+            tags: vec![],
+            applicable_phases: vec![],
+            evidence: Evidence::default(),
+            history: vec![],
+            body: "body".to_string(),
+            path: None,
+        };
+        save_entry(&kb_root.join("tech-wiki").join(format!("{id}.md")), &entry).unwrap();
+    }
+
+    /// Write a run-dir `.md` whose content embeds a knowledgeReferences block for each id.
+    fn write_run_file(run_dir: &Path, name: &str, ids: &[&str]) {
+        std::fs::create_dir_all(run_dir).unwrap();
+        let refs: Vec<Value> = ids.iter().map(|id| json!({"id": id})).collect();
+        let blob = json!({"knowledgeReferences": refs}).to_string();
+        std::fs::write(run_dir.join(name), format!("# run\n\n{blob}\n")).unwrap();
+    }
+
+    // R8a: a known id is marked updated, and its evidence is bumped on disk.
+    #[test]
+    fn touch_marks_known_id_updated_and_bumps_evidence() {
+        let kb = tempdir().unwrap();
+        let run = tempdir().unwrap();
+        seed_entry(kb.path(), "TK-X");
+        write_run_file(run.path(), "05-implement.md", &["TK-X"]);
+
+        let res = touch(kb.path(), run.path(), "proj", Some("2026-06-28"));
+
+        let updated = res["updated"].as_array().unwrap();
+        assert!(updated.iter().any(|v| v == "TK-X"));
+        assert!(res["unknown"].as_array().unwrap().is_empty());
+
+        let reloaded = load_entry(&kb.path().join("tech-wiki").join("TK-X.md")).unwrap();
+        assert_eq!(reloaded.evidence.ref_count, 1);
+        assert_eq!(
+            reloaded.evidence.last_referenced.as_deref(),
+            Some("2026-06-28")
+        );
+        assert!(reloaded.evidence.projects.contains(&"proj".to_string()));
+    }
+
+    // R8b: an id referenced but not in the KB is reported unknown, never updated.
+    #[test]
+    fn touch_reports_unknown_id_not_in_kb() {
+        let kb = tempdir().unwrap();
+        let run = tempdir().unwrap();
+        write_run_file(run.path(), "05-implement.md", &["TK-NOPE"]);
+
+        let res = touch(kb.path(), run.path(), "proj", Some("2026-06-28"));
+
+        assert!(res["unknown"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "TK-NOPE"));
+        assert!(!res["updated"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "TK-NOPE"));
+    }
+
+    // R8c: duplicate references across files sum into ref_count.
+    #[test]
+    fn touch_sums_duplicate_references_into_ref_count() {
+        let kb = tempdir().unwrap();
+        let run = tempdir().unwrap();
+        seed_entry(kb.path(), "TK-X");
+        write_run_file(run.path(), "a.md", &["TK-X"]);
+        write_run_file(run.path(), "b.md", &["TK-X"]);
+
+        touch(kb.path(), run.path(), "proj", Some("2026-06-28"));
+
+        let reloaded = load_entry(&kb.path().join("tech-wiki").join("TK-X.md")).unwrap();
+        assert_eq!(reloaded.evidence.ref_count, 2);
+    }
+}

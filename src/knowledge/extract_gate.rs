@@ -157,3 +157,67 @@ pub fn extract_from_run(run_dir: &Path, kb_root: &Path) -> Value {
     }
     json!({"written": written, "rejected": rejected})
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// A candidate that passes every gate rule; tests clone + mutate one field.
+    fn valid_candidate() -> Value {
+        json!({
+            "id": "TK-X",
+            "title": "A real transferable insight",
+            "category": "tech",
+            "type": "process",
+            "knowledge_class": "point",
+            "layer": "L1",
+            "tags": ["a"],
+            "applicable_phases": ["IMPLEMENT"],
+            "contributors": ["archiver"],
+            "body": "This body is comfortably over eighty characters so the strict extraction gate accepts it as real."
+        })
+    }
+
+    // R5: a fully valid candidate is accepted (no reasons).
+    #[test]
+    fn evaluate_accepts_fully_valid_candidate() {
+        assert!(evaluate(&valid_candidate()).is_empty());
+    }
+
+    // R6: each rule violation, applied one at a time to the valid base, yields its exact reason.
+    #[test]
+    fn evaluate_rejects_each_violated_rule() {
+        let has = |c: &Value, reason: &str| evaluate(c).iter().any(|r| r == reason);
+
+        // empty id
+        let mut c = valid_candidate();
+        c["id"] = json!("");
+        assert!(has(&c, "missing id"));
+
+        // body under MIN_BODY_CHARS (80)
+        let mut c = valid_candidate();
+        c["body"] = json!("too short");
+        assert!(has(&c, "insufficient depth (body too short)"));
+
+        // empty applicable_phases
+        let mut c = valid_candidate();
+        c["applicable_phases"] = json!([]);
+        assert!(has(&c, "not transferable (no applicable_phases)"));
+
+        // bad type
+        let mut c = valid_candidate();
+        c["type"] = json!("bogus");
+        assert!(has(&c, "missing/invalid type"));
+
+        // bad knowledge_class (non-empty bad value; absent would default to "point")
+        let mut c = valid_candidate();
+        c["knowledge_class"] = json!("bogus");
+        assert!(has(&c, "invalid knowledge_class"));
+
+        // empty title
+        let mut c = valid_candidate();
+        c["title"] = json!("");
+        assert!(has(&c, "missing title"));
+    }
+}
