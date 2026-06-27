@@ -722,17 +722,23 @@ fn kb_touch_parses_yaml_reference_blocks() {
         seed_entry(root, id, "causal");
     }
 
-    // Copy the real artifacts in, but DELETE the JSON workaround so the bug is exposed.
-    let src =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/workflows/2026-06-28-moat-hardening");
+    // Hermetic fixtures: write artifacts carrying the real knowledgeReferences shapes
+    // directly. Do NOT read docs/workflows/ — it is git-ignored, so it exists locally but
+    // is absent on a fresh CI clone (this is what broke CI). Shape A: a fenced-yaml `- id:`
+    // list, with `created:`/`wroteBack:` flow lists as over-match traps that must be ignored.
+    // Shape B: bare `- TK-...` bullets under a heading.
     let run_dir = root.join("docs/workflows/moat");
     std::fs::create_dir_all(&run_dir).unwrap();
-    for entry in std::fs::read_dir(&src).unwrap().flatten() {
-        let name = entry.file_name().to_string_lossy().to_string();
-        if name.ends_with(".md") && name != "knowledge-references.json.md" {
-            std::fs::copy(entry.path(), run_dir.join(&name)).unwrap();
-        }
-    }
+    std::fs::write(
+        run_dir.join("01-product.md"),
+        "## knowledgeReferences\n\n```yaml\nknowledgeReferences:\n  - id: TK-DOG-003\n  - id: TK-DOG-005\n  created: [TK-DOG-007, TK-DOG-008]\n  wroteBack: [TK-DOG-009, TK-DOG-010]\n```\n",
+    )
+    .unwrap();
+    std::fs::write(
+        run_dir.join("08-e2e.md"),
+        "## knowledgeReferences\n\n- TK-DOG-004 applied this run\n- TK-DOG-006 applied this run\n",
+    )
+    .unwrap();
 
     let res = json(&run(root, &["kb", "touch", "--from", run_dir.to_str().unwrap()]).stdout);
     let updated: Vec<&str> = res["updated"]
