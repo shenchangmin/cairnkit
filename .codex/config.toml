@@ -1,0 +1,11 @@
+# cairnkit baseline config for Codex (~/.codex/config.toml). Review + merge as desired —
+# sync-to-codex.sh does not overwrite your config. The cairn engine needs no special config;
+# these are optional model/sandbox suggestions for the role personas.
+
+# Suggested defaults for cairnkit delivery runs (adjust to your account/models):
+# model = "gpt-5.5"
+# model_reasoning_effort = "high"
+
+[cairnkit]
+# cairnkit drives the deterministic `cairn` binary; ensure it is on PATH.
+engine = "cairn"

@@ -76,14 +76,22 @@ git clone https://github.com/shenchangmin/cairnkit && cd cairnkit
 cargo install --path .          # builds `cairn` onto your PATH
 ```
 
-**2. The Claude Code plugin** — in a Claude Code session:
+**2a. Claude Code** — in a Claude Code session:
 
 ```
 /plugin marketplace add /path/to/cairnkit
 /plugin install cairnkit@cairnkit
 ```
 
-Full setup (optional shared knowledge repo + notifications) is in [SETUP.md](SETUP.md).
+**2b. Codex** — project the same harness into `~/.codex/`:
+
+```bash
+./scripts/sync-to-codex.sh        # installs AGENTS.md + cairnkit-* prompts (merge-safe)
+```
+
+cairnkit ships **both** a Claude Code and a Codex form over one shared engine + content — see
+[docs/ADAPTERS.md](docs/ADAPTERS.md). Full setup (optional shared knowledge repo + notifications)
+is in [SETUP.md](SETUP.md).
 
 ## Quick start
 
