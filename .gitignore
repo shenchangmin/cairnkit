@@ -34,3 +34,8 @@ build/
 
 # Rust
 /target/
+
+# Dogfooding artifacts — host runtime state/knowledge, never part of the engine repo
+cairnkit.yaml
+docs/workflows/
+docs/knowledge/
