@@ -153,3 +153,83 @@ fn write_panorama(path: &Path, entries: &[Entry]) -> Result<()> {
     std::fs::write(path, lines.join("\n") + "\n")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::knowledge::model::{save_entry, Evidence};
+    use tempfile::tempdir;
+
+    fn write_entry(root: &Path, id: &str, category: &str, domain: Option<&str>) {
+        let entry = Entry {
+            id: id.to_string(),
+            title: format!("title for {id}"),
+            category: category.to_string(),
+            domain: domain.map(String::from),
+            kind: "decision".to_string(),
+            guideline_polarity: None,
+            maturity: "draft".to_string(),
+            knowledge_class: "point".to_string(),
+            layer: "L1".to_string(),
+            tags: vec![],
+            applicable_phases: vec![],
+            evidence: Evidence::default(),
+            history: vec![],
+            body: "b".to_string(),
+            path: None,
+        };
+        let path = if category == "biz" {
+            root.join("biz-wiki")
+                .join(domain.unwrap_or("_"))
+                .join(format!("{id}.md"))
+        } else {
+            root.join("tech-wiki").join(format!("{id}.md"))
+        };
+        save_entry(&path, &entry).unwrap();
+    }
+
+    // R4a: stats reflect total / tech / biz / distinct-domain counts.
+    #[test]
+    fn build_index_counts_total_tech_biz_domains() {
+        let dir = tempdir().unwrap();
+        write_entry(dir.path(), "TK-1", "tech", None);
+        write_entry(dir.path(), "TK-2", "tech", None);
+        write_entry(dir.path(), "BK-1", "biz", Some("ecommerce"));
+        write_entry(dir.path(), "BK-2", "biz", Some("ads"));
+
+        let stats = build_index(dir.path()).unwrap();
+
+        assert_eq!(stats["total"], 4);
+        assert_eq!(stats["tech"], 2);
+        assert_eq!(stats["biz"], 2);
+        assert_eq!(stats["domains"], 2);
+    }
+
+    // R4b: a null-domain biz entry is grouped under "_" (index lenient; schema strict).
+    #[test]
+    fn biz_null_domain_grouped_under_underscore() {
+        let dir = tempdir().unwrap();
+        write_entry(dir.path(), "BK-X", "biz", None);
+
+        let stats = build_index(dir.path()).unwrap();
+
+        assert!(stats["domains"] >= 1);
+        assert!(dir
+            .path()
+            .join("biz-wiki")
+            .join("_")
+            .join(CATALOG_B)
+            .exists());
+    }
+
+    // R4c: empty KB -> ok, all stats zero, no panic.
+    #[test]
+    fn empty_kb_does_not_panic_all_zero() {
+        let dir = tempdir().unwrap();
+        let stats = build_index(dir.path()).unwrap();
+        assert_eq!(stats["total"], 0);
+        assert_eq!(stats["tech"], 0);
+        assert_eq!(stats["biz"], 0);
+        assert_eq!(stats["domains"], 0);
+    }
+}
