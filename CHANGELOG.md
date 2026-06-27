@@ -7,6 +7,12 @@ All notable changes to cairnkit are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Knowledge-loop end-to-end proof tests** — `tests/cli.rs` now drives the real `cairn` binary
+  through the full moat loop offline (seed → `build-index` → query → `extract` via the gate →
+  re-index → a second query that returns the just-extracted entry), proving knowledge *compounds*
+  across runs — the project's central claim, previously unverified by any automated test. Adds
+  focused guards for the two never-silent budget signals (`dropped` for truncated follow-on
+  entries, `over_budget` for an oversized top entry) and for extract-gate rejection-with-reasons.
 - **Codex harness adapter** — cairnkit now ships a Codex (`AGENTS.md`) form alongside Claude Code.
   Reorganized as **one shared engine (`cairn`) + shared role/command content + per-harness
   adapters** (the everything-claude-code pattern): the same `agents/*.md` role files and the

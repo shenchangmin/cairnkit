@@ -126,6 +126,9 @@ without Claude Code — see [USAGE.md](USAGE.md).
 
 The deterministic core is a **single `cairn` binary** (Rust, zero runtime dependencies — no
 Python/Node/interpreter), with unit + integration tests, running independently of Claude Code.
+The **knowledge loop is proven end-to-end**: an integration test drives the real binary through
+seed → extract → re-query and asserts the just-precipitated knowledge is retrievable, so the
+"knowledge compounds across runs" claim is guarded by CI, not just asserted.
 
 > Heads-up: end-to-end orchestration (the model dispatching role sub-agents inside Claude Code)
 > is best validated by running a real `/flow-run`; the CLI engine itself is fully tested.
