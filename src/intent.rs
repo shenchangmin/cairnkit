@@ -1,4 +1,10 @@
-//! IntentGate heuristic routing (mirrors Python `cairnkit.intent`).
+//! IntentGate fallback default for headless/scripted use.
+//!
+//! Classification is fuzzy work, so the **orchestrator (the model) is the primary
+//! classifier** — it reads the request and picks `full`/`lite`/`single` by judgment in
+//! any language. This Rust heuristic is only a deterministic fallback default for headless
+//! or scripted runs where no model is in the loop. When unsure it defaults to `full`, so it
+//! never under-processes a request.
 
 const SINGLE_HINTS: &[&str] = &[
     "typo",
@@ -12,19 +18,6 @@ const SINGLE_HINTS: &[&str] = &[
     "constant",
     "config value",
     "version",
-];
-const FRONTEND_HINTS: &[&str] = &[
-    "ui",
-    "page",
-    "screen",
-    "component",
-    "css",
-    "frontend",
-    "front-end",
-    "visual",
-    "button",
-    "layout",
-    "style",
 ];
 
 pub struct IntentResult {
@@ -42,15 +35,9 @@ pub fn classify(text: &str) -> IntentResult {
             reason: "short single-point change (keyword + brevity)",
         };
     }
-    if !FRONTEND_HINTS.iter().any(|h| low.contains(h)) {
-        return IntentResult {
-            path_mode: "lite",
-            reason: "no frontend/UI surface detected — backend-only path",
-        };
-    }
     IntentResult {
         path_mode: "full",
-        reason: "frontend surface present — full pipeline",
+        reason: "default to full pipeline; the orchestrator refines to lite/single by judgment",
     }
 }
 
@@ -59,10 +46,12 @@ mod tests {
     use super::*;
     #[test]
     fn routes() {
+        // Short single-point change → single.
         assert_eq!(classify("fix a typo in the README").path_mode, "single");
+        // The heuristic no longer guesses lite — backend and frontend both default to full.
         assert_eq!(
             classify("add a coupon endpoint to the order service with rate limiting").path_mode,
-            "lite"
+            "full"
         );
         assert_eq!(
             classify("build a new checkout page UI component with a styled button").path_mode,
