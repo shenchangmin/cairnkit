@@ -122,7 +122,7 @@ the real binary. Exits non-zero if the knowledge isn't retrievable.
 🟢 **v1 released — open source.** All staged modules are complete:
 
 - **Orchestration** — 16-stage file-as-state-machine with IntentGate routing
-  (full/lite/single), CLARIFY async pauses, verify-stage retry/block, and 11 role agents.
+  (full/lite/single/tooling), CLARIFY async pauses, verify-stage retry/block, and 11 role agents.
 - **Knowledge moat** — entry model + schema, 3-level progressive index + budget query,
   maturity lifecycle (promote/decay/lint + reference closed loop), and a cross-project Git
   knowledge repo (pull/push, L3→L1/L2 promotion, hybrid contribution, conflict staging).

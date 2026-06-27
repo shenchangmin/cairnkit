@@ -76,6 +76,12 @@ enum StateCmd {
         #[arg(long = "run-id")]
         run_id: String,
     },
+    New {
+        #[arg(long = "run-id")]
+        run_id: String,
+        #[arg(long)]
+        force: bool,
+    },
     Show,
     Resume,
     Advance,
@@ -307,6 +313,13 @@ fn state_cmd(root: &Path, sc: StateCmd) -> Result<i32> {
                 ));
             }
             emit_state(&config::init_state(&c, &run_id)?);
+        }
+        StateCmd::New { run_id, force } => {
+            let (s, archived) = state::new_run(&sp, &c, &run_id, force)?;
+            if let Some(p) = archived {
+                eprintln!("archived previous STATE -> {}", p.display());
+            }
+            emit_state(&s);
         }
         StateCmd::Show => emit_state(&state::show(&sp)?),
         StateCmd::Resume => {

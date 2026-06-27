@@ -141,7 +141,130 @@ fn set_path_mode_validation() {
     let d = project();
     init(d.path());
     assert_eq!(run(d.path(), &["state", "set-path-mode", "lite"]).code, 0);
+    assert_eq!(
+        run(d.path(), &["state", "set-path-mode", "tooling"]).code,
+        0
+    );
     assert_eq!(run(d.path(), &["state", "set-path-mode", "turbo"]).code, 2);
+    // typo close to the new mode is still rejected with code 2.
+    assert_eq!(run(d.path(), &["state", "set-path-mode", "toling"]).code, 2);
+}
+
+/// A `tooling` run walks INIT -> DONE without E2E_VERIFY ever appearing or
+/// `08-e2e.md` ever being demanded by the gate.
+#[test]
+fn tooling_walk_skips_e2e() {
+    let d = project();
+    let root = d.path();
+    init(root);
+
+    // tooling artifacts in advance-order; note 07-visual.md / 08-e2e.md are absent.
+    let artifact_for = |stage: &str| -> Option<&'static str> {
+        match stage {
+            "ANALYSE_PRODUCT" => Some("01-product.md"),
+            "ANALYSE_TECH" => Some("02-tech.md"),
+            "ARCHITECT_BACKEND" => Some("03-arch.md"),
+            "IMPLEMENT" => Some("05-implement.md"),
+            "BUILD_VERIFY" => Some("06-build.md"),
+            "TEST" => Some("09-test.md"),
+            "ARCHIVE" => Some("10-archive.md"),
+            _ => None,
+        }
+    };
+
+    let stage_now = |root: &Path| -> String {
+        json(&run(root, &["state", "show"]).stdout)["stage"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+
+    let mut guard = 0;
+    loop {
+        let s = stage_now(root);
+        if s == "DONE" {
+            break;
+        }
+        assert_ne!(s, "E2E_VERIFY", "tooling must never enter E2E_VERIFY");
+        if s == "INTENT_GATE" {
+            assert_eq!(run(root, &["state", "set-path-mode", "tooling"]).code, 0);
+            assert_eq!(
+                json(&run(root, &["state", "show"]).stdout)["path_mode"],
+                "tooling"
+            );
+        }
+        if let Some(f) = artifact_for(&s) {
+            write_artifact(root, f);
+        }
+        // clear any CLARIFY pause
+        if json(&run(root, &["state", "resume"]).stdout)["paused"] == true {
+            run(root, &["state", "approve-clarify"]);
+        }
+        let adv = run(root, &["state", "advance"]);
+        assert_eq!(
+            adv.code, 0,
+            "advance from {s} failed (code {}): {}",
+            adv.code, adv.stderr
+        );
+        guard += 1;
+        assert!(guard < 30, "tooling walk did not terminate");
+    }
+
+    let final_state = json(&run(root, &["state", "show"]).stdout);
+    assert_eq!(final_state["stage"], "DONE");
+    let history: Vec<String> = final_state["history"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x.as_str().unwrap().to_string())
+        .collect();
+    assert!(!history.contains(&"E2E_VERIFY".to_string()));
+    assert!(!history.contains(&"VISUAL_REVIEW".to_string()));
+    assert!(history.contains(&"BUILD_VERIFY".to_string()));
+    assert!(history.contains(&"TEST".to_string()));
+}
+
+#[test]
+fn state_new_archives_after_done() {
+    let d = project();
+    let root = d.path();
+    init(root);
+    run(root, &["state", "set-stage", "DONE"]);
+
+    let r = run(root, &["state", "new", "--run-id", "r2"]);
+    assert_eq!(r.code, 0);
+    let v = json(&r.stdout);
+    assert_eq!(v["stage"], "INIT");
+    assert_eq!(v["run_id"], "r2");
+    // archive notice on stderr; a timestamped sibling exists.
+    assert!(r.stderr.contains("archived previous STATE"));
+    let siblings: Vec<_> = std::fs::read_dir(root.join(".cairnkit"))
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.starts_with("STATE.") && n != "STATE.yaml")
+        .collect();
+    assert_eq!(siblings.len(), 1, "exactly one archive sibling expected");
+}
+
+#[test]
+fn state_new_refuses_in_progress_without_force() {
+    let d = project();
+    let root = d.path();
+    init(root);
+    run(root, &["state", "set-stage", "ANALYSE_PRODUCT"]);
+
+    // in-progress without --force -> code 2.
+    assert_eq!(run(root, &["state", "new", "--run-id", "r2"]).code, 2);
+    // STATE still on the old run.
+    assert_eq!(json(&run(root, &["state", "show"]).stdout)["run_id"], "r1");
+
+    // with --force -> code 0 and a fresh run.
+    let forced = run(root, &["state", "new", "--run-id", "r2", "--force"]);
+    assert_eq!(forced.code, 0);
+    let v = json(&forced.stdout);
+    assert_eq!(v["stage"], "INIT");
+    assert_eq!(v["run_id"], "r2");
 }
 
 #[test]
@@ -583,6 +706,66 @@ fn extract_gate_rejects_with_reasons() {
     // Bad candidates were never written to disk.
     assert!(!root.join("kb/tech-wiki/TK-101.md").exists());
     assert!(!root.join("kb/tech-wiki/TK-102.md").exists());
+}
+
+/// AC#2 / Bug 1: `kb touch` against the real moat-hardening artifacts — WITH the JSON
+/// workaround file removed — collects TK-DOG-003..006 from the YAML/bullet reference
+/// blocks, and never scrapes TK-DOG-007..010 (which live only in prose / `created:` /
+/// `wroteBack:` / tables, not in a reference `- id:` line or TK- bullet).
+#[test]
+fn kb_touch_parses_yaml_reference_blocks() {
+    let d = project();
+    let root = d.path();
+
+    // Seed only the entries this run actually applied.
+    for id in ["TK-DOG-003", "TK-DOG-004", "TK-DOG-005", "TK-DOG-006"] {
+        seed_entry(root, id, "causal");
+    }
+
+    // Hermetic fixtures: write artifacts carrying the real knowledgeReferences shapes
+    // directly. Do NOT read docs/workflows/ — it is git-ignored, so it exists locally but
+    // is absent on a fresh CI clone (this is what broke CI). Shape A: a fenced-yaml `- id:`
+    // list, with `created:`/`wroteBack:` flow lists as over-match traps that must be ignored.
+    // Shape B: bare `- TK-...` bullets under a heading.
+    let run_dir = root.join("docs/workflows/moat");
+    std::fs::create_dir_all(&run_dir).unwrap();
+    std::fs::write(
+        run_dir.join("01-product.md"),
+        "## knowledgeReferences\n\n```yaml\nknowledgeReferences:\n  - id: TK-DOG-003\n  - id: TK-DOG-005\n  created: [TK-DOG-007, TK-DOG-008]\n  wroteBack: [TK-DOG-009, TK-DOG-010]\n```\n",
+    )
+    .unwrap();
+    std::fs::write(
+        run_dir.join("08-e2e.md"),
+        "## knowledgeReferences\n\n- TK-DOG-004 applied this run\n- TK-DOG-006 applied this run\n",
+    )
+    .unwrap();
+
+    let res = json(&run(root, &["kb", "touch", "--from", run_dir.to_str().unwrap()]).stdout);
+    let updated: Vec<&str> = res["updated"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    for id in ["TK-DOG-003", "TK-DOG-004", "TK-DOG-005", "TK-DOG-006"] {
+        assert!(
+            updated.contains(&id),
+            "{id} must be collected from YAML blocks"
+        );
+    }
+
+    let referenced: Vec<&str> = res["referenced"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    for id in ["TK-DOG-007", "TK-DOG-008", "TK-DOG-009", "TK-DOG-010"] {
+        assert!(
+            !referenced.contains(&id),
+            "{id} must NOT be scraped (it is prose/created/wroteBack, not a reference)"
+        );
+    }
 }
 
 // ---- evolve safety ----
