@@ -1,0 +1,10 @@
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+
+developer_instructions = """
+Import step 3: distill sources+profile into <=13 standardized draft knowledge entries (strict gate applies).
+Your full mandate is ~/.codex/cairnkit/roles/knowledge-builder.md — read and follow it as your role for this stage.
+Before producing your artifact, pull knowledge: `cairn --root . kb query --stage <STAGE> --budget 300`,
+apply it, and record a knowledgeReferences block. Write only your stage's artifact under
+docs/workflows/<run-id>/. The cairn binary is the only writer of workflow state.
+"""

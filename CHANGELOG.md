@@ -10,9 +10,11 @@ All notable changes to cairnkit are documented here. The format is based on
 - **Codex harness adapter** — cairnkit now ships a Codex (`AGENTS.md`) form alongside Claude Code.
   Reorganized as **one shared engine (`cairn`) + shared role/command content + per-harness
   adapters** (the everything-claude-code pattern): the same `agents/*.md` role files and the
-  `cairn` engine drive both harnesses; only the driver differs (Claude Code = Task sub-agents,
-  Codex = one agent playing roles sequentially via `AGENTS.md`). Adds `scripts/sync-to-codex.sh`
-  (merge-safe projection into `~/.codex/`), `.codex/` baseline, and `docs/ADAPTERS.md`.
+  `cairn` engine drive both harnesses. Both get **real role isolation** — Claude Code via Task
+  sub-agents, Codex via its **native multi-agent** (`multi_agent=true` + per-role
+  `.codex/agents/<role>.toml` with their own reasoning effort / sandbox / `developer_instructions`),
+  dispatched by the parent orchestrator. Adds `scripts/sync-to-codex.sh` (merge-safe projection
+  into `~/.codex/`), `.codex/` baseline + the 11 role agents, and `docs/ADAPTERS.md`.
 
 ### Changed
 - **IntentGate classification moved to the model layer.** The Rust keyword heuristic mis-routed

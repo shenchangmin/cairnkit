@@ -29,25 +29,26 @@ cairn --root . kbrepo pull | push --message <m> | promote --id <id> --to <L1|L2>
 Exit codes: `0` ok · `2` usage · `3` gate refused · `4` STATE corrupt. **Never** edit
 `.cairnkit/STATE.yaml` by hand.
 
-## How role dispatch works here (the key difference from Claude Code)
+## How role dispatch works here
 
-Claude Code dispatches each stage's role as an isolated Task sub-agent. Codex has no native
-multi-sub-agent dispatch, so **you (a single agent) play each role sequentially**: at each
-stage you adopt that role's mandate, do its work, write its artifact, then advance. The role
-mandates are the shared files in `agents/` — read the relevant one and follow it as your
-persona for that stage. Keep roles separated *at the artifact level* even though one agent runs.
+Codex has **native multi-agent** (`multi_agent = true`; see developers.openai.com/codex/multi-agent).
+cairnkit uses it: you are the **parent orchestrator**, and at each stage you **dispatch the stage's
+role agent** — an isolated Codex sub-agent defined in `~/.codex/agents/<role>.toml` with its own
+reasoning effort, sandbox, and `developer_instructions` (the role's mandate). This gives real
+role isolation (a context firewall per role), the same discipline as the Claude Code form — not
+one agent blurring every role. Each role's full mandate is also at `~/.codex/cairnkit/roles/<role>.md`.
 
-| stage | role file to adopt | writes |
+| stage | role agent to dispatch | writes |
 |---|---|---|
-| ANALYSE_PRODUCT | `agents/product.md` | docs/workflows/<run-id>/01-product.md |
-| ANALYSE_TECH | `agents/tech.md` | 02-tech.md |
-| ARCHITECT_BACKEND | `agents/architect-be.md` | 03-arch.md |
-| ARCHITECT_FRONTEND | `agents/architect-fe.md` | 04-arch-fe.md |
-| IMPLEMENT | `agents/dev.md` | 05-implement.md |
-| BUILD_VERIFY / E2E_VERIFY / TEST | `agents/verify.md` | 06-build.md / 08-e2e.md / 09-test.md |
-| VISUAL_REVIEW | `agents/visual.md` | 07-visual.md |
-| ARCHIVE | `agents/archiver.md` | 10-archive.md |
-| INIT, INTENT_GATE, CLARIFY_*, DONE | — | — |
+| ANALYSE_PRODUCT | `product` | docs/workflows/<run-id>/01-product.md |
+| ANALYSE_TECH | `tech` | 02-tech.md |
+| ARCHITECT_BACKEND | `architect-be` | 03-arch.md |
+| ARCHITECT_FRONTEND | `architect-fe` | 04-arch-fe.md |
+| IMPLEMENT | `dev` | 05-implement.md |
+| BUILD_VERIFY / E2E_VERIFY / TEST | `verify` | 06-build.md / 08-e2e.md / 09-test.md |
+| VISUAL_REVIEW | `visual` | 07-visual.md |
+| ARCHIVE | `archiver` | 10-archive.md |
+| INIT, INTENT_GATE, CLARIFY_*, DONE | — (parent handles directly) | — |
 
 (The cold-start import roles are `agents/doc-collector.md`, `codebase-profiler.md`, `knowledge-builder.md`.)
 
@@ -63,9 +64,9 @@ persona for that stage. Keep roles separated *at the artifact level* even though
    - `lite` — backend feature, no UI.
    - `full` — feature with frontend/UI. *When unsure, route higher (full is safer). Language-independent.*
    Then `state advance`. (`cairn intent classify` is only an optional fallback hint.)
-5. **A role stage** → adopt the mapped role file, do its work, write its artifact, then `state advance`.
-   Each role first pulls knowledge: `cairn --root . kb query --stage <STAGE> --budget 300` and
-   records a `knowledgeReferences` block in its artifact.
+5. **A role stage** → **dispatch the mapped role sub-agent** (`~/.codex/agents/<role>.toml`) to do
+   its work and write its artifact; then `state advance`. Each role first pulls knowledge:
+   `cairn --root . kb query --stage <STAGE> --budget 300` and records a `knowledgeReferences` block.
    - Verify stages: on failure run `cairn --root . state fail --stage <stage>` and redo the fix;
      after the cap the run blocks → tell the user.
 6. **CLARIFY stages** pause the run (`state advance` into one sets `pending_clarify`). **Stop and
