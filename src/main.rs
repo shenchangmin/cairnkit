@@ -359,7 +359,9 @@ fn kbrepo_cmd(root: &Path, kc: KbrepoCmd) -> Result<i32> {
     match kc {
         KbrepoCmd::Init => {
             kbrepo::init_repo(&repo)?;
-            emit(json!({"initialized": repo.to_string_lossy(), "is_git_repo": kbrepo::is_git_repo(&repo)}));
+            emit(
+                json!({"initialized": repo.to_string_lossy(), "is_git_repo": kbrepo::is_git_repo(&repo)}),
+            );
         }
         KbrepoCmd::Pull => emit(kbrepo::pull(&repo)),
         KbrepoCmd::Push { message } => emit(kbrepo::push(&repo, &message)?),
