@@ -88,7 +88,7 @@ cargo install --path .          # builds `cairn` onto your PATH
 **2b. Codex** — project the same harness into `~/.codex/`:
 
 ```bash
-./scripts/sync-to-codex.sh        # installs AGENTS.md + cairnkit-* prompts (merge-safe)
+./scripts/sync-to-codex.sh        # installs AGENTS.md + cairnkit-* prompts + role agents (merge-safe)
 ```
 
 cairnkit ships **both** a Claude Code and a Codex form over one shared engine + content — see
@@ -120,7 +120,9 @@ without Claude Code — see [USAGE.md](USAGE.md).
 - **Feeding & reach** — cold-start `/flow-import` pipeline and pluggable notifications.
 - **Self-evolution** — `/evolve` with a *structural* never-auto-apply guarantee.
 - **Harness adapters** — Claude Code and Codex forms over one shared engine + content
-  ([docs/ADAPTERS.md](docs/ADAPTERS.md)); adding a harness is an adapter, not a fork.
+  ([docs/ADAPTERS.md](docs/ADAPTERS.md)), **both with real per-role isolation** (Claude Code via
+  Task sub-agents, Codex via its native multi-agent — per-role `.codex/agents/<role>.toml`
+  dispatched by the parent orchestrator); adding a harness is an adapter, not a fork.
 
 The deterministic core is a **single `cairn` binary** (Rust, zero runtime dependencies — no
 Python/Node/interpreter), with unit + integration tests, running independently of Claude Code.
