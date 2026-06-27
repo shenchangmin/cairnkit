@@ -21,7 +21,7 @@ pub const FULL_SEQUENCE: &[&str] = &[
     "DONE",
 ];
 
-pub const PATH_MODES: &[&str] = &["full", "lite", "single"];
+pub const PATH_MODES: &[&str] = &["full", "lite", "single", "tooling"];
 pub const RETRY_STAGES: &[&str] = &["BUILD_VERIFY", "E2E_VERIFY"];
 pub const RETRY_CAP: u32 = 5;
 
@@ -29,6 +29,14 @@ const LITE_EXCLUDE: &[&str] = &[
     "ARCHITECT_FRONTEND",
     "CLARIFY_ARCH_FRONTEND",
     "VISUAL_REVIEW",
+];
+// = LITE_EXCLUDE + E2E_VERIFY: a non-app (tooling/governance) deliverable routes around
+// E2E by sequence (gate-enforced), not by a stub artifact.
+const TOOLING_EXCLUDE: &[&str] = &[
+    "ARCHITECT_FRONTEND",
+    "CLARIFY_ARCH_FRONTEND",
+    "VISUAL_REVIEW",
+    "E2E_VERIFY",
 ];
 const SINGLE_INCLUDE: &[&str] = &[
     "INIT",
@@ -86,6 +94,13 @@ pub fn stages_for(path_mode: &str) -> Option<Vec<&'static str>> {
                 .filter(|s| !LITE_EXCLUDE.contains(s))
                 .collect(),
         ),
+        "tooling" => Some(
+            FULL_SEQUENCE
+                .iter()
+                .copied()
+                .filter(|s| !TOOLING_EXCLUDE.contains(s))
+                .collect(),
+        ),
         "full" => Some(FULL_SEQUENCE.to_vec()),
         _ => None,
     }
@@ -140,5 +155,52 @@ mod tests {
     #[test]
     fn unknown_mode_none() {
         assert!(stages_for("turbo").is_none());
+    }
+    #[test]
+    fn tooling_drops_e2e() {
+        let s = stages_for("tooling").unwrap();
+        assert!(!s.contains(&"E2E_VERIFY"));
+        assert!(!s.contains(&"VISUAL_REVIEW"));
+        assert!(!s.contains(&"ARCHITECT_FRONTEND"));
+        assert!(!s.contains(&"CLARIFY_ARCH_FRONTEND"));
+        assert!(s.contains(&"TEST"));
+        assert!(s.contains(&"BUILD_VERIFY"));
+        assert!(s.contains(&"ARCHIVE"));
+    }
+
+    #[test]
+    fn tooling_next_skips_e2e() {
+        assert_eq!(next_stage("BUILD_VERIFY", "tooling"), Some("TEST"));
+    }
+
+    #[test]
+    fn tooling_is_valid_mode() {
+        assert!(is_valid_path_mode("tooling"));
+    }
+
+    #[test]
+    fn tooling_exact_sequence() {
+        let expected = [
+            "INIT",
+            "INTENT_GATE",
+            "ANALYSE_PRODUCT",
+            "CLARIFY_PRODUCT",
+            "ANALYSE_TECH",
+            "CLARIFY_TECH",
+            "ARCHITECT_BACKEND",
+            "CLARIFY_ARCH_BACKEND",
+            "IMPLEMENT",
+            "BUILD_VERIFY",
+            "TEST",
+            "ARCHIVE",
+            "DONE",
+        ];
+        assert_eq!(stages_for("tooling").unwrap(), expected);
+    }
+
+    #[test]
+    fn lite_still_contains_e2e() {
+        // Regression guard: tooling is lite *minus* E2E; lite itself must keep it.
+        assert!(stages_for("lite").unwrap().contains(&"E2E_VERIFY"));
     }
 }
