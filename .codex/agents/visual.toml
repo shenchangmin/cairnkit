@@ -1,0 +1,10 @@
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+
+developer_instructions = """
+Visual review role (VISUAL_REVIEW). Walk the UI vs the frontend design + guidelines. Review only; do not edit code.
+Your full mandate is ~/.codex/cairnkit/roles/visual.md — read and follow it as your role for this stage.
+Before producing your artifact, pull knowledge: `cairn --root . kb query --stage <STAGE> --budget 300`,
+apply it, and record a knowledgeReferences block. Write only your stage's artifact under
+docs/workflows/<run-id>/. The cairn binary is the only writer of workflow state.
+"""

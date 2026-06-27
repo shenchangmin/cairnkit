@@ -26,7 +26,7 @@ cairnkit/
 | | Claude Code | Codex |
 |---|---|---|
 | Entry | slash commands (`/cairnkit:flow-run`) + `workflow-orchestrator` skill | `AGENTS.md` + `cairnkit-*` prompts |
-| Role dispatch | each role is an isolated **Task sub-agent** | one agent **plays each role sequentially** (reads `agents/<role>.md`) |
+| Role dispatch | each role is an isolated **Task sub-agent** | each role is a **Codex sub-agent** (`~/.codex/agents/<role>.toml`, `multi_agent=true`) dispatched by the parent orchestrator |
 | Install | `/plugin marketplace add . && /plugin install cairnkit@cairnkit` | `./scripts/sync-to-codex.sh` → `~/.codex/` |
 | Config home | `~/.claude/` | `~/.codex/` |
 | Engine | `cairn` (identical) | `cairn` (identical) |
@@ -38,9 +38,10 @@ CLI. The **role/orchestrator content** lives once in `agents/` + `commands/`. An
 to map "how this harness exposes commands and dispatches roles" — everything else is shared. Adding
 a third harness (Cursor, OpenCode, …) is a new adapter, not a fork.
 
-> Trade-off, honestly: Codex has no native multi-sub-agent dispatch, so its role isolation is
-> weaker than Claude Code's (sequential personas in one context vs. isolated sub-agents). Role
-> separation is preserved at the artifact level (one stage artifact each). See `AGENTS.md`.
+> Both harnesses get **real role isolation**: Claude Code via Task sub-agents, Codex via its
+> native multi-agent (`multi_agent=true` + per-role `~/.codex/agents/*.toml` with their own model /
+> sandbox / `developer_instructions`). cairnkit generates one role agent per role from the shared
+> `agents/*.md` mandates; the sync installs them. See `AGENTS.md` and `.codex/agents/`.
 
 ## Adding / updating the Codex form
 

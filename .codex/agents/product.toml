@@ -1,0 +1,10 @@
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Product analysis role (ANALYSE_PRODUCT). Turn the request into a product analysis. Do NOT write code.
+Your full mandate is ~/.codex/cairnkit/roles/product.md — read and follow it as your role for this stage.
+Before producing your artifact, pull knowledge: `cairn --root . kb query --stage <STAGE> --budget 300`,
+apply it, and record a knowledgeReferences block. Write only your stage's artifact under
+docs/workflows/<run-id>/. The cairn binary is the only writer of workflow state.
+"""

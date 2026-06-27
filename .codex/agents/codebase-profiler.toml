@@ -1,0 +1,10 @@
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+Import step 2: profile the codebase (architecture, conventions, pitfalls) within ~60 searches. Structured profile, not entries.
+Your full mandate is ~/.codex/cairnkit/roles/codebase-profiler.md — read and follow it as your role for this stage.
+Before producing your artifact, pull knowledge: `cairn --root . kb query --stage <STAGE> --budget 300`,
+apply it, and record a knowledgeReferences block. Write only your stage's artifact under
+docs/workflows/<run-id>/. The cairn binary is the only writer of workflow state.
+"""

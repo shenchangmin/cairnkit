@@ -25,6 +25,12 @@ do_or_echo "mkdir -p '$ROLES_DEST'"
 do_or_echo "cp '$REPO_ROOT/agents/'*.md '$ROLES_DEST/'"
 log "roles -> $ROLES_DEST"
 
+# 1b. Role agents (Codex native multi-agent profiles) -> ~/.codex/agents/
+AGENTS_DEST="$CODEX_HOME/agents"
+do_or_echo "mkdir -p '$AGENTS_DEST'"
+do_or_echo "cp '$REPO_ROOT/.codex/agents/'*.toml '$AGENTS_DEST/'"
+log "role agents -> $AGENTS_DEST (needs multi_agent=true in config.toml)"
+
 # 2. Commands → ~/.codex/prompts/cairnkit-*.md  (Codex custom prompts ≈ slash commands)
 PROMPTS_DEST="$CODEX_HOME/prompts"
 do_or_echo "mkdir -p '$PROMPTS_DEST'"
